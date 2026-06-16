@@ -1,13 +1,14 @@
 from __future__ import annotations
 
+from .localization import localize_court_title, localize_venue_title
 from .models import SearchPreferences, SlotCandidate
 from .selection import choose_best_slot, extract_candidates_from_available_events, sort_slots
 
 
 DEFAULT_VENUE_TITLES = {
-    12: "Barrikadnaya",
-    14: "Tretyakovskaya",
-    15: "Rimskaya",
+    12: "Баррикадная",
+    14: "Третьяковская",
+    15: "Римская",
 }
 
 
@@ -30,13 +31,16 @@ class SlotScanner:
                 court_id = int(court.get("court_id") or 0)
                 if court_id <= 0 or not court.get("has_bookable_slots"):
                     continue
-                court_title = str(court.get("court_title") or f"Court {court_id}")
+                court_title = localize_court_title(
+                    str(court.get("court_title") or f"Court {court_id}")
+                )
                 all_candidates.extend(
                     extract_candidates_from_available_events(
                         available_events=court.get("available_events") or [],
                         venue_id=venue_id,
                         venue_title=venue_titles.get(
-                            venue_id, DEFAULT_VENUE_TITLES.get(venue_id, str(venue_id))
+                            venue_id,
+                            DEFAULT_VENUE_TITLES.get(venue_id, str(venue_id)),
                         ),
                         court_id=court_id,
                         court_title=court_title,
@@ -58,5 +62,5 @@ class SlotScanner:
                 continue
             title = str(venue.get("title") or "").strip()
             if title:
-                titles[venue_id] = title
+                titles[venue_id] = localize_venue_title(title)
         return titles

@@ -47,27 +47,29 @@ def build_dispatcher(manager, storage):
     @dp.message(Command("start"))
     async def start(message: Message):
         await message.answer(
-            "Padel bot is ready.\n\n"
-            "1. Start monitoring: /search 17:00-22:00\n"
-            "   Or target a date: /search 2026-06-12 17:00-22:00\n"
-            "2. The bot only notifies you about free slots.\n"
-            "   Register manually on the PADL site.\n"
-            "Other commands: /status, /stop"
+            "Бот PADL готов.\n\n"
+            "1. Запустить мониторинг: /search 17:00-22:00\n"
+            "   Или указать дату: /search 2026-06-12 17:00-22:00\n"
+            "2. Бот только уведомляет о свободных слотах.\n"
+            "   Записывайтесь вручную на сайте PADL.\n"
+            "Другие команды: /now, /status, /stop"
         )
 
     @dp.message(Command("profile"))
     async def profile(message: Message):
         args = _command_args(message.text).split()
         if len(args) != 4:
-            await message.answer("Usage: /profile FIRST LAST PHONE EMAIL")
+            await message.answer("Формат: /profile ИМЯ ФАМИЛИЯ ТЕЛЕФОН ПОЧТА")
             return
         first_name, last_name, raw_phone, email = args
         phone = normalize_phone(raw_phone)
         if phone is None:
-            await message.answer("Phone should be a Russian mobile number, for example +79161234567.")
+            await message.answer(
+                "Телефон должен быть российским мобильным номером, например +79161234567."
+            )
             return
         if "@" not in email:
-            await message.answer("Email looks invalid.")
+            await message.answer("Почта выглядит некорректно.")
             return
         storage.save_profile(
             Profile(
@@ -79,8 +81,8 @@ def build_dispatcher(manager, storage):
             )
         )
         await message.answer(
-            "Profile saved. Monitoring does not require a profile. "
-            "Start monitoring with /search 17:00-22:00"
+            "Профиль сохранён. Для мониторинга профиль не нужен. "
+            "Запустите мониторинг: /search 17:00-22:00"
         )
 
     @dp.message(Command("search"))
@@ -110,6 +112,14 @@ def build_dispatcher(manager, storage):
     async def status(message: Message):
         await message.answer(await manager.status_message(message.chat.id))
 
+    @dp.message(Command("now"))
+    async def now(message: Message):
+        try:
+            response = await manager.current_slots_message(message.chat.id)
+        except Exception as exc:
+            response = str(exc)
+        await message.answer(response)
+
     @dp.message(Command("stop"))
     async def stop(message: Message):
         await message.answer(await manager.stop_search(message.chat.id))
@@ -118,11 +128,19 @@ def build_dispatcher(manager, storage):
     async def code(message: Message):
         sms_code = extract_sms_code(_command_args(message.text))
         if not sms_code:
-            await message.answer("Usage: /code 1234")
+            await message.answer("Формат: /code 1234")
             return
         try:
             await manager.submit_sms_code(message.chat.id, sms_code)
         except Exception as exc:
             await message.answer(str(exc))
+
+    @dp.message(Command("resend"))
+    async def resend(message: Message):
+        try:
+            response = await manager.resend_sms_code(message.chat.id)
+        except Exception as exc:
+            response = str(exc)
+        await message.answer(response)
 
     return dp

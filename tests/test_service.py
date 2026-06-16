@@ -153,11 +153,11 @@ class SearchManagerMonitoringTests(unittest.IsolatedAsyncioTestCase):
         task = manager.state.tasks[self.chat_id]
         self.assertEqual(
             response,
-            "Monitoring started: free play, all venues, 17:00-22:00, 2 places.",
+            "Мониторинг запущен: свободная игра, все площадки, 17:00-22:00, мест: 2.",
         )
         self.assertFalse(task.done())
         self.assertEqual(len(bot.messages), 1)
-        self.assertIn("Free PADL slots found", bot.messages[0]["text"])
+        self.assertIn("Найдены свободные слоты PADL", bot.messages[0]["text"])
         self.assertEqual(coordinator.reserve_calls, [])
 
         await manager.stop_search(self.chat_id)
@@ -171,11 +171,23 @@ class SearchManagerMonitoringTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(len(bot.messages), 1)
         self.assertEqual(
             storage.statuses[-1],
-            (self.chat_id, True, "monitoring, no new slots"),
+            (self.chat_id, True, "мониторинг, новых слотов нет"),
         )
         self.assertEqual(coordinator.reserve_calls, [])
 
         await manager.stop_search(self.chat_id)
+
+    async def test_current_slots_message_lists_slots_without_marking_notified(self):
+        manager, storage, bot, coordinator = self.build_manager([[self.slot]])
+        manager.state.notified_slots[self.chat_id] = set()
+
+        response = await manager.current_slots_message(self.chat_id)
+
+        self.assertIn("Актуальные свободные слоты PADL прямо сейчас", response)
+        self.assertIn("Площадка: Третьяковская", response)
+        self.assertEqual(manager.state.notified_slots[self.chat_id], set())
+        self.assertEqual(bot.messages, [])
+        self.assertEqual(coordinator.reserve_calls, [])
 
 
 if __name__ == "__main__":

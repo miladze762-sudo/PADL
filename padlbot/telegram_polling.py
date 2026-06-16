@@ -93,30 +93,30 @@ async def handle_message(message: IncomingMessage, *, bot: TelegramBot, manager,
     if command == "/start":
         await bot.send_message(
             message.chat_id,
-            "Padel bot is ready.\n\n"
-            "1. Start monitoring: /search 17:00-22:00\n"
-            "   Or target a date: /search 2026-06-12 17:00-22:00\n"
-            "2. The bot only notifies you about free slots.\n"
-            "   Register manually on the PADL site.\n"
-            "Other commands: /status, /stop",
+            "Бот PADL готов.\n\n"
+            "1. Запустить мониторинг: /search 17:00-22:00\n"
+            "   Или указать дату: /search 2026-06-12 17:00-22:00\n"
+            "2. Бот только уведомляет о свободных слотах.\n"
+            "   Записывайтесь вручную на сайте PADL.\n"
+            "Другие команды: /now, /status, /stop",
         )
         return
 
     if command == "/profile":
         args = _command_args(text).split()
         if len(args) != 4:
-            await bot.send_message(message.chat_id, "Usage: /profile FIRST LAST PHONE EMAIL")
+            await bot.send_message(message.chat_id, "Формат: /profile ИМЯ ФАМИЛИЯ ТЕЛЕФОН ПОЧТА")
             return
         first_name, last_name, raw_phone, email = args
         phone = normalize_phone(raw_phone)
         if phone is None:
             await bot.send_message(
                 message.chat_id,
-                "Phone should be a Russian mobile number, for example +79161234567.",
+                "Телефон должен быть российским мобильным номером, например +79161234567.",
             )
             return
         if "@" not in email:
-            await bot.send_message(message.chat_id, "Email looks invalid.")
+            await bot.send_message(message.chat_id, "Почта выглядит некорректно.")
             return
         storage.save_profile(
             Profile(
@@ -129,8 +129,8 @@ async def handle_message(message: IncomingMessage, *, bot: TelegramBot, manager,
         )
         await bot.send_message(
             message.chat_id,
-            "Profile saved. Monitoring does not require a profile. "
-            "Start monitoring with /search 17:00-22:00",
+            "Профиль сохранён. Для мониторинга профиль не нужен. "
+            "Запустите мониторинг: /search 17:00-22:00",
         )
         return
 
@@ -156,6 +156,14 @@ async def handle_message(message: IncomingMessage, *, bot: TelegramBot, manager,
         await bot.send_message(message.chat_id, response)
         return
 
+    if command == "/now":
+        try:
+            response = await manager.current_slots_message(message.chat_id)
+        except Exception as exc:
+            response = str(exc)
+        await bot.send_message(message.chat_id, response)
+        return
+
     if command == "/status":
         await bot.send_message(message.chat_id, await manager.status_message(message.chat_id))
         return
@@ -167,7 +175,7 @@ async def handle_message(message: IncomingMessage, *, bot: TelegramBot, manager,
     if command == "/code":
         sms_code = extract_sms_code(_command_args(text))
         if not sms_code:
-            await bot.send_message(message.chat_id, "Usage: /code 1234")
+            await bot.send_message(message.chat_id, "Формат: /code 1234")
             return
         try:
             await manager.submit_sms_code(message.chat_id, sms_code)
@@ -183,7 +191,7 @@ async def handle_message(message: IncomingMessage, *, bot: TelegramBot, manager,
         await bot.send_message(message.chat_id, response)
         return
 
-    await bot.send_message(message.chat_id, "Unknown command. Send /start for help.")
+    await bot.send_message(message.chat_id, "Неизвестная команда. Отправьте /start для справки.")
 
 
 async def polling_loop(*, bot: TelegramBot, manager, storage) -> None:

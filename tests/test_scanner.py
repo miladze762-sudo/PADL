@@ -120,6 +120,8 @@ class SlotScannerTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertIsNotNone(slot)
         self.assertEqual(slot.event_id, 945)
+        self.assertEqual(slot.venue_title, "Баррикадная")
+        self.assertEqual(slot.court_title, "Корт 1")
         self.assertEqual(slot.duration_minutes, 60)
         self.assertEqual(slot.available_tickets, 2)
         self.assertEqual(api.availability_calls, [])

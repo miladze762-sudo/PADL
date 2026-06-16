@@ -162,14 +162,14 @@ class BookingCoordinatorTests(unittest.IsolatedAsyncioTestCase):
         coordinator = BookingCoordinator(self.api)
         self.api.hold_error = RuntimeError("409 Conflict")
 
-        with self.assertRaisesRegex(BookingError, "Slot is no longer available"):
+        with self.assertRaisesRegex(BookingError, "Слот уже недоступен"):
             await coordinator.reserve_slot(self.slot, self.profile, self.preferences)
 
     async def test_expired_session_during_hold_raises_booking_error(self):
         coordinator = BookingCoordinator(self.api)
         self.api.hold_error = RuntimeError("404 Not Found")
 
-        with self.assertRaisesRegex(BookingError, "Booking session expired"):
+        with self.assertRaisesRegex(BookingError, "Сессия бронирования истекла"):
             await coordinator.reserve_slot(self.slot, self.profile, self.preferences)
 
     async def test_bad_sms_code_raises_booking_error(self):
@@ -177,7 +177,7 @@ class BookingCoordinatorTests(unittest.IsolatedAsyncioTestCase):
         self.api.verify_error = RuntimeError("400 Bad Request")
         pending = await coordinator.reserve_slot(self.slot, self.profile, self.preferences)
 
-        with self.assertRaisesRegex(BookingError, "Invalid SMS code"):
+        with self.assertRaisesRegex(BookingError, "Неверный СМС-код"):
             await coordinator.confirm_with_sms(pending, self.profile, "1111")
 
     async def test_confirm_failure_raises_booking_error(self):
@@ -185,7 +185,7 @@ class BookingCoordinatorTests(unittest.IsolatedAsyncioTestCase):
         self.api.confirm_error = RuntimeError("500 Server Error")
         pending = await coordinator.reserve_slot(self.slot, self.profile, self.preferences)
 
-        with self.assertRaisesRegex(BookingError, "Could not confirm booking"):
+        with self.assertRaisesRegex(BookingError, "Не удалось подтвердить бронь"):
             await coordinator.confirm_with_sms(pending, self.profile, "4821")
 
 

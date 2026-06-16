@@ -1,7 +1,11 @@
 import unittest
 
-from padlbot.models import SlotCandidate
-from padlbot.formatting import format_monitoring_slot_messages
+from padlbot.models import BookingResult, PendingBooking, SlotCandidate
+from padlbot.formatting import (
+    format_booking_result,
+    format_monitoring_slot_messages,
+    format_pending,
+)
 
 
 def make_slot(index: int) -> SlotCandidate:
@@ -32,8 +36,35 @@ class FormattingTests(unittest.TestCase):
         self.assertGreater(len(messages), 1)
         self.assertTrue(all(len(message) <= 260 for message in messages))
         joined = "\n".join(messages)
+        self.assertIn("Найдены свободные слоты PADL", joined)
+        self.assertIn("Площадка: Римская", joined)
         for index in range(8):
-            self.assertIn(f"Court: Court {index}", joined)
+            self.assertIn(f"Корт: Корт {index}", joined)
+
+    def test_pending_booking_message_is_russian(self):
+        message = format_pending(
+            PendingBooking(
+                session_id="session-1",
+                hold_id="hold-1",
+                slot=make_slot(1),
+                tickets_count=2,
+            )
+        )
+
+        self.assertIn("Слот удержан. Жду СМС-код.", message)
+        self.assertIn("Корт: Корт 1", message)
+
+    def test_booking_result_message_is_russian(self):
+        message = format_booking_result(
+            BookingResult(
+                booking_id="777",
+                slot=make_slot(2),
+                tickets_count=2,
+            )
+        )
+
+        self.assertIn("Бронь подтверждена!", message)
+        self.assertIn("Номер брони: #777", message)
 
 
 if __name__ == "__main__":

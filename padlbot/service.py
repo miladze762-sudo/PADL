@@ -7,6 +7,7 @@ from datetime import datetime, timedelta
 from .booking import BookingCoordinator
 from .config import Config
 from .formatting import format_booking_result, format_monitoring_slot_messages
+from .localization import event_type_label
 from .models import MOSCOW_TZ, PendingBooking, SearchPreferences, SlotCandidate, parse_datetime
 from .scanner import SlotScanner
 from .storage import Storage
@@ -54,17 +55,17 @@ class SearchManager:
     async def start_search(self, chat_id: int, preferences: SearchPreferences) -> str:
         existing = self.state.tasks.get(chat_id)
         if existing and not existing.done():
-            return "Monitoring is already active."
+            return "Мониторинг уже запущен."
         self.storage.save_preferences(chat_id, preferences)
-        self.storage.set_search_active(chat_id, True, "monitoring")
+        self.storage.set_search_active(chat_id, True, "мониторинг")
         self.state.notified_slots[chat_id] = set()
         self.state.tasks[chat_id] = asyncio.create_task(self._search_loop(chat_id))
         return (
-            "Monitoring started: free play, all venues, "
+            f"Мониторинг запущен: {event_type_label(preferences.event_type)}, все площадки, "
             f"{preferences.start_time}-{preferences.end_time}, "
-            f"{preferences.tickets_count} places"
+            f"мест: {preferences.tickets_count}"
             + (
-                f", dates: {', '.join(preferences.target_dates)}."
+                f", даты: {', '.join(preferences.target_dates)}."
                 if preferences.target_dates
                 else "."
             )
@@ -78,31 +79,43 @@ class SearchManager:
         self.state.blocked_slots.pop(chat_id, None)
         self.state.sms_paused_until.pop(chat_id, None)
         self.state.notified_slots.pop(chat_id, None)
-        self.storage.set_search_active(chat_id, False, "stopped")
-        return "Monitoring stopped."
+        self.storage.set_search_active(chat_id, False, "остановлен")
+        return "Мониторинг остановлен."
 
     async def status_message(self, chat_id: int) -> str:
         active, status = self.storage.get_search_state(chat_id)
         last = self.storage.get_last_booking(chat_id)
-        parts = [f"Monitoring: {'active' if active else 'inactive'}"]
+        parts = [f"Мониторинг: {'активен' if active else 'неактивен'}"]
         if status:
-            parts.append(f"Status: {status}")
+            parts.append(f"Статус: {status}")
         if chat_id in self.state.pending:
-            parts.append("Pending booking: waiting for SMS code")
+            parts.append("Ожидающая бронь: жду СМС-код")
         if last:
-            parts.append("Last booking:\n" + format_booking_result(last))
+            parts.append("Последняя бронь:\n" + format_booking_result(last))
         return "\n\n".join(parts)
+
+    async def current_slots_message(self, chat_id: int) -> str:
+        preferences = self.storage.get_preferences(chat_id)
+        slots = await self.scanner.find_slots(preferences)
+        if not slots:
+            return "Сейчас подходящих свободных слотов нет. Мониторинг продолжается."
+        messages = format_monitoring_slot_messages(
+            slots,
+            preferences.tickets_count,
+            header="Актуальные свободные слоты PADL прямо сейчас:",
+        )
+        return "\n\n".join(messages)
 
     async def submit_sms_code(self, chat_id: int, code: str) -> str:
         pending = self.state.pending.get(chat_id)
         if pending is None:
-            raise UserVisibleError("No active held slot is waiting for an SMS code.")
+            raise UserVisibleError("Нет удержанного слота, который ждёт СМС-код.")
         profile = self.storage.get_profile(chat_id)
         if profile is None:
-            raise UserVisibleError("Profile is missing.")
+            raise UserVisibleError("Профиль не заполнен.")
         result = await self.coordinator.confirm_with_sms(pending, profile, code)
         self.storage.save_last_booking(chat_id, result)
-        self.storage.set_search_active(chat_id, False, "confirmed")
+        self.storage.set_search_active(chat_id, False, "подтверждено")
         self.state.pending.pop(chat_id, None)
         message = format_booking_result(result)
         await self.bot.send_message(chat_id, message)
@@ -111,12 +124,12 @@ class SearchManager:
     async def resend_sms_code(self, chat_id: int) -> str:
         pending = self.state.pending.get(chat_id)
         if pending is None:
-            raise UserVisibleError("No active held slot is waiting for an SMS code.")
+            raise UserVisibleError("Нет удержанного слота, который ждёт СМС-код.")
         profile = self.storage.get_profile(chat_id)
         if profile is None:
-            raise UserVisibleError("Profile is missing.")
+            raise UserVisibleError("Профиль не заполнен.")
         await self.coordinator.resend_sms(pending, profile)
-        return "SMS requested again. When it arrives, send /code 1234."
+        return "СМС запрошена повторно. Когда она придёт, отправьте /code 1234."
 
     async def _search_loop(self, chat_id: int) -> None:
         while True:
@@ -133,16 +146,20 @@ class SearchManager:
                     self.storage.set_search_active(
                         chat_id,
                         True,
-                        f"monitoring, {len(new_slots)} new slot(s) found",
+                        f"мониторинг, найдено новых слотов: {len(new_slots)}",
                     )
                 else:
-                    status = "monitoring, no matching slot yet" if not slots else "monitoring, no new slots"
+                    status = (
+                        "мониторинг, подходящих слотов пока нет"
+                        if not slots
+                        else "мониторинг, новых слотов нет"
+                    )
                     self.storage.set_search_active(chat_id, True, status)
                 await asyncio.sleep(preferences.poll_interval_seconds)
             except asyncio.CancelledError:
                 raise
             except Exception as exc:
-                self.storage.set_search_active(chat_id, True, f"temporary error: {exc}")
+                self.storage.set_search_active(chat_id, True, f"временная ошибка: {exc}")
                 await asyncio.sleep(preferences.poll_interval_seconds)
 
     def _new_slots_for_notification(
@@ -170,8 +187,8 @@ class SearchManager:
             profile = self.storage.get_profile(chat_id)
             if profile is None:
                 self.state.pending.pop(chat_id, None)
-                self.storage.set_search_active(chat_id, False, "profile missing")
-                await self.bot.send_message(chat_id, "Profile is missing.")
+                self.storage.set_search_active(chat_id, False, "профиль не заполнен")
+                await self.bot.send_message(chat_id, "Профиль не заполнен.")
                 return False
 
             try:
@@ -183,11 +200,15 @@ class SearchManager:
                 self.state.pending.pop(chat_id, None)
                 self._block_slot(chat_id, pending.slot)
                 self._pause_sms_attempts(chat_id)
-                self.storage.set_search_active(chat_id, True, "SMS hold expired, searching again")
+                self.storage.set_search_active(
+                    chat_id,
+                    True,
+                    "окно СМС истекло, ищу дальше",
+                )
                 await self.bot.send_message(
                     chat_id,
-                    "SMS window expired before confirmation. I am skipping this slot "
-                    "temporarily and searching again.",
+                    "Время подтверждения по СМС истекло. Временно пропускаю этот слот "
+                    "и продолжаю поиск.",
                 )
                 return True
 
@@ -204,27 +225,27 @@ class SearchManager:
                         self.storage.set_search_active(
                             chat_id,
                             True,
-                            "SMS resend failed, searching again",
+                            "повторная отправка СМС не удалась, ищу дальше",
                         )
                         await self.bot.send_message(
                             chat_id,
-                            "SMS resend failed. I am searching again.",
+                            "Не удалось повторно отправить СМС. Продолжаю поиск.",
                         )
                         return True
                     resends += 1
                     await self.bot.send_message(
                         chat_id,
-                        "SMS did not deliver, so I requested it one more time.",
+                        "СМС не доставлена, поэтому я запросил её ещё раз.",
                     )
                     continue
 
                 self.state.pending.pop(chat_id, None)
                 self._block_slot(chat_id, pending.slot)
                 self._pause_sms_attempts(chat_id)
-                self.storage.set_search_active(chat_id, True, "SMS failed, searching again")
+                self.storage.set_search_active(chat_id, True, "СМС не доставлена, ищу дальше")
                 await self.bot.send_message(
                     chat_id,
-                    "SMS did not deliver. I am skipping this slot temporarily and searching again.",
+                    "СМС не доставлена. Временно пропускаю этот слот и продолжаю поиск.",
                 )
                 return True
 

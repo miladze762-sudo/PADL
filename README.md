@@ -38,6 +38,7 @@ python -m padlbot
 - `/profile FIRST LAST PHONE EMAIL` - save an old booking profile if needed for legacy SMS commands.
 - `/search 17:00-22:00` - start continuous monitoring for any day in the site's booking horizon.
 - `/search 2026-06-12 17:00-22:00` - monitor a specific date.
+- `/now` - show slots available right now without stopping monitoring.
 - `/status` - show current state and last booking.
 - `/stop` - stop active monitoring.
 - `/code 1234` - legacy manual SMS fallback for an already-held slot.

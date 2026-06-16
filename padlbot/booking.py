@@ -15,10 +15,10 @@ def _error_text(error: BaseException) -> str:
 def _classify_hold_error(error: BaseException) -> BookingError:
     text = _error_text(error)
     if "409" in text or "conflict" in text:
-        return BookingError("Slot is no longer available")
+        return BookingError("Слот уже недоступен")
     if "400" in text or "404" in text or "expired" in text:
-        return BookingError("Booking session expired")
-    return BookingError("Could not hold slot")
+        return BookingError("Сессия бронирования истекла")
+    return BookingError("Не удалось удержать слот")
 
 
 class BookingCoordinator:
@@ -102,8 +102,8 @@ class BookingCoordinator:
         except Exception as exc:
             text = _error_text(exc)
             if "400" in text or "invalid" in text or "bad request" in text:
-                raise BookingError("Invalid SMS code") from exc
-            raise BookingError("Could not verify SMS code") from exc
+                raise BookingError("Неверный СМС-код") from exc
+            raise BookingError("Не удалось проверить СМС-код") from exc
 
         try:
             response = await self.api.confirm_booking(
@@ -115,7 +115,7 @@ class BookingCoordinator:
                 phone=site_phone,
             )
         except Exception as exc:
-            raise BookingError("Could not confirm booking") from exc
+            raise BookingError("Не удалось подтвердить бронь") from exc
 
         result = BookingResult(
             booking_id=str(response.get("booking_id", "")),
