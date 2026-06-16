@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 
 from .booking import BookingCoordinator
 from .config import Config
-from .formatting import format_booking_result, format_monitoring_slots
+from .formatting import format_booking_result, format_monitoring_slot_messages
 from .models import MOSCOW_TZ, PendingBooking, SearchPreferences, SlotCandidate, parse_datetime
 from .scanner import SlotScanner
 from .storage import Storage
@@ -125,10 +125,11 @@ class SearchManager:
                 slots = await self.scanner.find_slots(preferences)
                 new_slots = self._new_slots_for_notification(chat_id, slots)
                 if new_slots:
-                    await self.bot.send_message(
-                        chat_id,
-                        format_monitoring_slots(new_slots, preferences.tickets_count),
-                    )
+                    for message in format_monitoring_slot_messages(
+                        new_slots,
+                        preferences.tickets_count,
+                    ):
+                        await self.bot.send_message(chat_id, message)
                     self.storage.set_search_active(
                         chat_id,
                         True,

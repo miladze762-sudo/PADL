@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from .models import BookingResult, PendingBooking, SlotCandidate
 
+TELEGRAM_MESSAGE_LIMIT = 4096
+
 
 def format_slot(slot: SlotCandidate, tickets_count: int | None = None) -> str:
     tickets = f"\nPlaces: {tickets_count}" if tickets_count is not None else ""
@@ -23,6 +25,29 @@ def format_monitoring_slots(slots: list[SlotCandidate], tickets_count: int) -> s
         "Free PADL slots found. Register manually on the site:\n\n"
         + "\n\n".join(slot_lines)
     )
+
+
+def format_monitoring_slot_messages(
+    slots: list[SlotCandidate],
+    tickets_count: int,
+    max_message_length: int = TELEGRAM_MESSAGE_LIMIT,
+) -> list[str]:
+    header = "Free PADL slots found. Register manually on the site:"
+    messages: list[str] = []
+    current = header
+
+    for index, slot in enumerate(slots, start=1):
+        entry = f"{index}.\n" + format_slot(slot, tickets_count)
+        candidate = current + "\n\n" + entry
+        if len(candidate) <= max_message_length or current == header:
+            current = candidate
+            continue
+
+        messages.append(current)
+        current = header + "\n\n" + entry
+
+    messages.append(current)
+    return messages
 
 
 def format_pending(pending: PendingBooking) -> str:
