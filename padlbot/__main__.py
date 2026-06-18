@@ -21,8 +21,15 @@ async def main(config: Config) -> None:
     ) as api:
         async with TelegramBot(config.telegram_bot_token) as bot:
             manager = SearchManager(api=api, storage=storage, bot=bot, config=config)
+            resumed_chat_ids = set(
+                manager.resume_active_searches(storage.list_active_search_chat_ids())
+            )
             webhook_runner = await start_sms_webhook(manager, config)
-            if config.auto_start_search and config.admin_chat_id is not None:
+            if (
+                config.auto_start_search
+                and config.admin_chat_id is not None
+                and config.admin_chat_id not in resumed_chat_ids
+            ):
                 preferences = storage.get_preferences(config.admin_chat_id)
                 response = await manager.start_search(config.admin_chat_id, preferences)
                 await bot.send_message(config.admin_chat_id, response)

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from .localization import localize_court_title, localize_venue_title
+from .localization import PADL_BOOKING_URL, localize_court_title, localize_venue_title
 from .models import BookingResult, PendingBooking, SlotCandidate
 
 TELEGRAM_MESSAGE_LIMIT = 4096
@@ -23,7 +23,8 @@ def format_monitoring_slots(slots: list[SlotCandidate], tickets_count: int) -> s
     for index, slot in enumerate(slots, start=1):
         slot_lines.append(f"{index}.\n" + format_slot(slot, tickets_count))
     return (
-        "Найдены свободные слоты PADL. Запишитесь вручную на сайте:\n\n"
+        f"Найдены свободные слоты PADL. Запишитесь вручную на сайте PADL:\n"
+        f"{PADL_BOOKING_URL}\n\n"
         + "\n\n".join(slot_lines)
     )
 
@@ -32,7 +33,10 @@ def format_monitoring_slot_messages(
     slots: list[SlotCandidate],
     tickets_count: int,
     max_message_length: int = TELEGRAM_MESSAGE_LIMIT,
-    header: str = "Найдены свободные слоты PADL. Запишитесь вручную на сайте:",
+    header: str = (
+        "Найдены свободные слоты PADL. Запишитесь вручную на сайте PADL:\n"
+        f"{PADL_BOOKING_URL}"
+    ),
 ) -> list[str]:
     messages: list[str] = []
     current = header
@@ -67,6 +71,5 @@ def format_booking_result(result: BookingResult) -> str:
         "Бронь подтверждена!\n\n"
         + format_slot(result.slot, result.tickets_count)
         + f"\nНомер брони: #{result.booking_id}\n\n"
-        + "Какую дату или время мониторить дальше? Отправьте /search 2026-06-12 17:00-22:00 "
-        + "или /search 17:00-22:00."
+        + "Чтобы снова запустить постоянный мониторинг без ограничения по времени, отправьте /search."
     )

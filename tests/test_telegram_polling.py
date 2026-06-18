@@ -1,5 +1,6 @@
 import unittest
 
+from padlbot.models import DEFAULT_DURATIONS, DEFAULT_VENUE_IDS, SearchPreferences
 from padlbot.telegram_polling import IncomingMessage, handle_message
 
 
@@ -20,6 +21,31 @@ class FakeNowManager:
         return "current slots"
 
 
+class FakeSearchStorage:
+    def __init__(self):
+        self.preferences = SearchPreferences(
+            start_time="17:00",
+            end_time="22:00",
+            tickets_count=1,
+            durations=(60,),
+            venue_ids=(12,),
+            target_dates=("2026-06-12",),
+            event_type="masterclass",
+        )
+
+    def get_preferences(self, chat_id):
+        return self.preferences
+
+
+class FakeSearchManager:
+    def __init__(self):
+        self.calls = []
+
+    async def start_search(self, chat_id, preferences):
+        self.calls.append((chat_id, preferences))
+        return "started"
+
+
 class TelegramPollingMessageTests(unittest.IsolatedAsyncioTestCase):
     async def test_start_message_is_russian(self):
         bot = FakeBot()
@@ -31,9 +57,18 @@ class TelegramPollingMessageTests(unittest.IsolatedAsyncioTestCase):
             storage=None,
         )
 
-        self.assertIn("Бот PADL готов.", bot.messages[0]["text"])
-        self.assertIn("/search 17:00-22:00", bot.messages[0]["text"])
-        self.assertIn("/now", bot.messages[0]["text"])
+        self.assertEqual(
+            bot.messages[0]["text"],
+            "Бот PADL готов.\n\n"
+            "Запустить постоянный мониторинг: /search\n"
+            "Бот ищет без ограничения по времени.\n"
+            "Записывайтесь вручную на сайте PADL:\n"
+            "https://outdoor.sport.mos.ru/#venues-events\n"
+            "Другие команды: /now, /status, /stop",
+        )
+        self.assertNotIn("1.", bot.messages[0]["text"])
+        self.assertNotIn("2.", bot.messages[0]["text"])
+        self.assertIn("Другие команды: /now, /status, /stop", bot.messages[0]["text"])
 
     async def test_profile_usage_message_is_russian(self):
         bot = FakeBot()
@@ -78,6 +113,28 @@ class TelegramPollingMessageTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(manager.calls, [100])
         self.assertEqual(bot.messages[0]["text"], "current slots")
+
+    async def test_search_uses_default_free_play_preferences(self):
+        bot = FakeBot()
+        manager = FakeSearchManager()
+
+        await handle_message(
+            IncomingMessage(chat_id=100, text="/search 2026-06-20 18:00-19:00"),
+            bot=bot,
+            manager=manager,
+            storage=FakeSearchStorage(),
+        )
+
+        self.assertEqual(bot.messages[0]["text"], "started")
+        self.assertEqual(manager.calls[0][0], 100)
+        preferences = manager.calls[0][1]
+        self.assertIsNone(preferences.start_time)
+        self.assertIsNone(preferences.end_time)
+        self.assertEqual(preferences.target_dates, ())
+        self.assertEqual(preferences.tickets_count, 2)
+        self.assertEqual(preferences.durations, DEFAULT_DURATIONS)
+        self.assertEqual(preferences.venue_ids, DEFAULT_VENUE_IDS)
+        self.assertEqual(preferences.event_type, "free_play")
 
 
 if __name__ == "__main__":

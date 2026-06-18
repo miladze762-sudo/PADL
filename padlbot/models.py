@@ -22,8 +22,8 @@ def parse_datetime(value: str | datetime) -> datetime:
 
 @dataclass(frozen=True)
 class SearchPreferences:
-    start_time: str = "17:00"
-    end_time: str = "22:00"
+    start_time: str | None = None
+    end_time: str | None = None
     tickets_count: int = 2
     durations: tuple[int, ...] = DEFAULT_DURATIONS
     venue_ids: tuple[int, ...] = DEFAULT_VENUE_IDS

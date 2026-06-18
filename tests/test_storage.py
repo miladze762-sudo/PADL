@@ -44,6 +44,39 @@ class StorageTests(unittest.TestCase):
         finally:
             db_path.unlink(missing_ok=True)
 
+    def test_preferences_without_time_window_round_trip(self):
+        db_path = Path.cwd() / "test-preferences-unbounded.db"
+        try:
+            storage = Storage(db_path)
+            storage.initialize()
+            preferences = SearchPreferences(
+                start_time=None,
+                end_time=None,
+                tickets_count=2,
+                durations=(120, 60),
+                venue_ids=(14, 12),
+                target_dates=(),
+            )
+
+            storage.save_preferences(100, preferences)
+
+            self.assertEqual(storage.get_preferences(100), preferences)
+        finally:
+            db_path.unlink(missing_ok=True)
+
+    def test_list_active_search_chat_ids(self):
+        db_path = Path.cwd() / "test-active-searches.db"
+        try:
+            storage = Storage(db_path)
+            storage.initialize()
+            storage.set_search_active(100, True, "monitoring")
+            storage.set_search_active(200, False, "stopped")
+            storage.set_search_active(300, True, "monitoring")
+
+            self.assertEqual(storage.list_active_search_chat_ids(), [100, 300])
+        finally:
+            db_path.unlink(missing_ok=True)
+
 
 if __name__ == "__main__":
     unittest.main()

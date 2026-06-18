@@ -113,8 +113,8 @@ class Storage:
                 """,
                 (
                     chat_id,
-                    preferences.start_time,
-                    preferences.end_time,
+                    preferences.start_time or "",
+                    preferences.end_time or "",
                     preferences.tickets_count,
                     json.dumps(list(preferences.durations)),
                     json.dumps(list(preferences.venue_ids)),
@@ -138,8 +138,8 @@ class Storage:
         if row is None:
             return SearchPreferences()
         return SearchPreferences(
-            start_time=str(row["start_time"]),
-            end_time=str(row["end_time"]),
+            start_time=self._optional_text(row["start_time"]),
+            end_time=self._optional_text(row["end_time"]),
             tickets_count=int(row["tickets_count"]),
             durations=tuple(int(item) for item in json.loads(row["durations"])),
             venue_ids=tuple(int(item) for item in json.loads(row["venue_ids"])),
@@ -170,6 +170,18 @@ class Storage:
         if row is None:
             return False, ""
         return bool(row["active"]), str(row["last_status"] or "")
+
+    def list_active_search_chat_ids(self) -> list[int]:
+        with self._connect() as conn:
+            rows = conn.execute(
+                """
+                SELECT chat_id
+                FROM search_state
+                WHERE active = 1
+                ORDER BY chat_id
+                """
+            ).fetchall()
+        return [int(row["chat_id"]) for row in rows]
 
     def save_last_booking(self, chat_id: int, result: BookingResult) -> None:
         slot = result.slot
@@ -239,3 +251,7 @@ class Storage:
         }
         if column_name not in columns:
             conn.execute(f"ALTER TABLE {table_name} ADD COLUMN {column_name} {column_definition}")
+
+    def _optional_text(self, value) -> str | None:
+        text = str(value or "").strip()
+        return text or None

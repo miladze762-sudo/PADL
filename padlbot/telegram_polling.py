@@ -1,13 +1,13 @@
 from __future__ import annotations
 
 import asyncio
-import re
 from dataclasses import dataclass
 from typing import Any
 
 import aiohttp
 
-from .models import Profile
+from .localization import start_help_message
+from .models import Profile, SearchPreferences
 from .selection import extract_sms_code, normalize_phone
 
 
@@ -16,17 +16,6 @@ def _command_args(text: str | None) -> str:
         return ""
     parts = text.split(maxsplit=1)
     return parts[1].strip() if len(parts) > 1 else ""
-
-
-def _parse_time_window(args: str) -> tuple[str, str] | None:
-    match = re.search(r"(\d{1,2}:\d{2})\s*-\s*(\d{1,2}:\d{2})", args)
-    if not match:
-        return None
-    return match.group(1), match.group(2)
-
-
-def _parse_target_dates(args: str) -> tuple[str, ...]:
-    return tuple(re.findall(r"\b\d{4}-\d{2}-\d{2}\b", args))
 
 
 @dataclass(frozen=True)
@@ -93,12 +82,7 @@ async def handle_message(message: IncomingMessage, *, bot: TelegramBot, manager,
     if command == "/start":
         await bot.send_message(
             message.chat_id,
-            "Бот PADL готов.\n\n"
-            "1. Запустить мониторинг: /search 17:00-22:00\n"
-            "   Или указать дату: /search 2026-06-12 17:00-22:00\n"
-            "2. Бот только уведомляет о свободных слотах.\n"
-            "   Записывайтесь вручную на сайте PADL.\n"
-            "Другие команды: /now, /status, /stop",
+            start_help_message(),
         )
         return
 
@@ -130,25 +114,15 @@ async def handle_message(message: IncomingMessage, *, bot: TelegramBot, manager,
         await bot.send_message(
             message.chat_id,
             "Профиль сохранён. Для мониторинга профиль не нужен. "
-            "Запустите мониторинг: /search 17:00-22:00",
+            "Запустите мониторинг: /search",
         )
         return
 
     if command == "/search":
-        preferences = storage.get_preferences(message.chat_id)
-        args = _command_args(text)
-        window = _parse_time_window(args)
-        if window:
-            preferences = type(preferences)(
-                start_time=window[0],
-                end_time=window[1],
-                tickets_count=preferences.tickets_count,
-                durations=preferences.durations,
-                venue_ids=preferences.venue_ids,
-                target_dates=_parse_target_dates(args),
-                event_type=preferences.event_type,
-                poll_interval_seconds=preferences.poll_interval_seconds,
-            )
+        stored_preferences = storage.get_preferences(message.chat_id)
+        preferences = SearchPreferences(
+            poll_interval_seconds=stored_preferences.poll_interval_seconds,
+        )
         try:
             response = await manager.start_search(message.chat_id, preferences)
         except Exception as exc:

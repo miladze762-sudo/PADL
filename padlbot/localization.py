@@ -9,6 +9,19 @@ VENUE_TITLE_TRANSLATIONS = {
     "Rimskaya": "Римская",
 }
 
+PADL_BOOKING_URL = "https://outdoor.sport.mos.ru/#venues-events"
+
+
+def start_help_message() -> str:
+    return (
+        "Бот PADL готов.\n\n"
+        "Запустить постоянный мониторинг: /search\n"
+        "Бот ищет без ограничения по времени.\n"
+        "Записывайтесь вручную на сайте PADL:\n"
+        f"{PADL_BOOKING_URL}\n"
+        "Другие команды: /now, /status, /stop"
+    )
+
 
 def localize_venue_title(title: str) -> str:
     normalized = title.strip()

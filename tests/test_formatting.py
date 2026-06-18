@@ -37,6 +37,7 @@ class FormattingTests(unittest.TestCase):
         self.assertTrue(all(len(message) <= 260 for message in messages))
         joined = "\n".join(messages)
         self.assertIn("Найдены свободные слоты PADL", joined)
+        self.assertIn("https://outdoor.sport.mos.ru/#venues-events", joined)
         self.assertIn("Площадка: Римская", joined)
         for index in range(8):
             self.assertIn(f"Корт: Корт {index}", joined)
@@ -65,6 +66,8 @@ class FormattingTests(unittest.TestCase):
 
         self.assertIn("Бронь подтверждена!", message)
         self.assertIn("Номер брони: #777", message)
+        self.assertIn("отправьте /search", message)
+        self.assertNotIn("17:00-22:00", message)
 
 
 if __name__ == "__main__":

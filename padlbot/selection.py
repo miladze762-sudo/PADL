@@ -13,6 +13,8 @@ def _parse_hhmm(value: str) -> time:
 
 
 def _inside_window(slot: SlotCandidate, preferences: SearchPreferences) -> bool:
+    if preferences.start_time is None or preferences.end_time is None:
+        return True
     start = slot.starts_at.astimezone(MOSCOW_TZ).timetz().replace(second=0, microsecond=0)
     end = slot.ends_at.astimezone(MOSCOW_TZ).timetz().replace(second=0, microsecond=0)
     return _parse_hhmm(preferences.start_time) <= start and end <= _parse_hhmm(preferences.end_time)

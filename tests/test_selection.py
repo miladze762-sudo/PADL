@@ -11,6 +11,65 @@ from padlbot.selection import (
 
 
 class SelectionTests(unittest.TestCase):
+    def test_extract_candidates_allows_any_time_when_window_is_unset(self):
+        preferences = SearchPreferences(
+            tickets_count=2,
+            durations=(60,),
+            venue_ids=(12,),
+        )
+        availability = {
+            "events": [
+                {
+                    "id": 901,
+                    "starts": [
+                        {
+                            "time": "08:00",
+                            "starts_at": "2026-06-12T08:00:00.000+03:00",
+                            "durations": {
+                                "60": {
+                                    "enabled": True,
+                                    "booking_open": True,
+                                    "available_tickets": 2,
+                                    "starts_at": "2026-06-12T08:00:00.000+03:00",
+                                    "ends_at": "2026-06-12T09:00:00.000+03:00",
+                                }
+                            },
+                        }
+                    ],
+                },
+                {
+                    "id": 902,
+                    "starts": [
+                        {
+                            "time": "22:30",
+                            "starts_at": "2026-06-12T22:30:00.000+03:00",
+                            "durations": {
+                                "60": {
+                                    "enabled": True,
+                                    "booking_open": True,
+                                    "available_tickets": 2,
+                                    "starts_at": "2026-06-12T22:30:00.000+03:00",
+                                    "ends_at": "2026-06-12T23:30:00.000+03:00",
+                                }
+                            },
+                        }
+                    ],
+                },
+            ]
+        }
+
+        candidates = extract_candidates(
+            availability=availability,
+            venue_id=12,
+            venue_title="Barrikadnaya",
+            court_id=10,
+            court_title="Court 1",
+            date_key="2026-06-12",
+            preferences=preferences,
+        )
+
+        self.assertEqual([slot.event_id for slot in candidates], [901, 902])
+
     def test_extract_candidates_respects_window_ticket_count_and_durations(self):
         preferences = SearchPreferences(
             start_time="17:00",

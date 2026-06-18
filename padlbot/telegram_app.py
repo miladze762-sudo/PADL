@@ -1,8 +1,7 @@
 from __future__ import annotations
 
-import re
-
-from .models import Profile
+from .localization import start_help_message
+from .models import Profile, SearchPreferences
 from .selection import extract_sms_code, normalize_phone
 
 try:
@@ -27,33 +26,13 @@ def _command_args(text: str | None) -> str:
     return parts[1].strip() if len(parts) > 1 else ""
 
 
-def _parse_time_window(args: str) -> tuple[str, str] | None:
-    if not args:
-        return None
-    match = re.search(r"(\d{1,2}:\d{2})\s*-\s*(\d{1,2}:\d{2})", args)
-    if not match:
-        return None
-    return match.group(1), match.group(2)
-
-
-def _parse_target_dates(args: str) -> tuple[str, ...]:
-    return tuple(re.findall(r"\b\d{4}-\d{2}-\d{2}\b", args))
-
-
 def build_dispatcher(manager, storage):
     _require_aiogram()
     dp = Dispatcher()
 
     @dp.message(Command("start"))
     async def start(message: Message):
-        await message.answer(
-            "Бот PADL готов.\n\n"
-            "1. Запустить мониторинг: /search 17:00-22:00\n"
-            "   Или указать дату: /search 2026-06-12 17:00-22:00\n"
-            "2. Бот только уведомляет о свободных слотах.\n"
-            "   Записывайтесь вручную на сайте PADL.\n"
-            "Другие команды: /now, /status, /stop"
-        )
+        await message.answer(start_help_message())
 
     @dp.message(Command("profile"))
     async def profile(message: Message):
@@ -82,26 +61,15 @@ def build_dispatcher(manager, storage):
         )
         await message.answer(
             "Профиль сохранён. Для мониторинга профиль не нужен. "
-            "Запустите мониторинг: /search 17:00-22:00"
+            "Запустите мониторинг: /search"
         )
 
     @dp.message(Command("search"))
     async def search(message: Message):
-        preferences = storage.get_preferences(message.chat.id)
-        args = _command_args(message.text)
-        window = _parse_time_window(args)
-        target_dates = _parse_target_dates(args)
-        if window:
-            preferences = type(preferences)(
-                start_time=window[0],
-                end_time=window[1],
-                tickets_count=preferences.tickets_count,
-                durations=preferences.durations,
-                venue_ids=preferences.venue_ids,
-                target_dates=target_dates,
-                event_type=preferences.event_type,
-                poll_interval_seconds=preferences.poll_interval_seconds,
-            )
+        stored_preferences = storage.get_preferences(message.chat.id)
+        preferences = SearchPreferences(
+            poll_interval_seconds=stored_preferences.poll_interval_seconds,
+        )
         try:
             response = await manager.start_search(message.chat.id, preferences)
         except Exception as exc:

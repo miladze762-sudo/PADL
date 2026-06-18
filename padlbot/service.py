@@ -52,23 +52,32 @@ class SearchManager:
         self.coordinator = BookingCoordinator(api)
         self.state = RuntimeState.empty()
 
+    def resume_active_searches(self, chat_ids) -> list[int]:
+        resumed: list[int] = []
+        for chat_id in chat_ids:
+            existing = self.state.tasks.get(chat_id)
+            if existing and not existing.done():
+                continue
+            preferences = self._unbounded_preferences(self.storage.get_preferences(chat_id))
+            self.storage.save_preferences(chat_id, preferences)
+            self.state.notified_slots[chat_id] = set()
+            self.storage.set_search_active(chat_id, True, "мониторинг возобновлен")
+            self.state.tasks[chat_id] = asyncio.create_task(self._search_loop(chat_id))
+            resumed.append(chat_id)
+        return resumed
+
     async def start_search(self, chat_id: int, preferences: SearchPreferences) -> str:
         existing = self.state.tasks.get(chat_id)
         if existing and not existing.done():
             return "Мониторинг уже запущен."
+        preferences = self._unbounded_preferences(preferences)
         self.storage.save_preferences(chat_id, preferences)
         self.storage.set_search_active(chat_id, True, "мониторинг")
         self.state.notified_slots[chat_id] = set()
         self.state.tasks[chat_id] = asyncio.create_task(self._search_loop(chat_id))
         return (
             f"Мониторинг запущен: {event_type_label(preferences.event_type)}, все площадки, "
-            f"{preferences.start_time}-{preferences.end_time}, "
-            f"мест: {preferences.tickets_count}"
-            + (
-                f", даты: {', '.join(preferences.target_dates)}."
-                if preferences.target_dates
-                else "."
-            )
+            f"без ограничения по времени, мест: {preferences.tickets_count}."
         )
 
     async def stop_search(self, chat_id: int) -> str:
@@ -95,7 +104,7 @@ class SearchManager:
         return "\n\n".join(parts)
 
     async def current_slots_message(self, chat_id: int) -> str:
-        preferences = self.storage.get_preferences(chat_id)
+        preferences = self._unbounded_preferences(self.storage.get_preferences(chat_id))
         slots = await self.scanner.find_slots(preferences)
         if not slots:
             return "Сейчас подходящих свободных слотов нет. Мониторинг продолжается."
@@ -133,7 +142,7 @@ class SearchManager:
 
     async def _search_loop(self, chat_id: int) -> None:
         while True:
-            preferences = self.storage.get_preferences(chat_id)
+            preferences = self._unbounded_preferences(self.storage.get_preferences(chat_id))
             try:
                 slots = await self.scanner.find_slots(preferences)
                 new_slots = self._new_slots_for_notification(chat_id, slots)
@@ -161,6 +170,11 @@ class SearchManager:
             except Exception as exc:
                 self.storage.set_search_active(chat_id, True, f"временная ошибка: {exc}")
                 await asyncio.sleep(preferences.poll_interval_seconds)
+
+    def _unbounded_preferences(self, preferences: SearchPreferences) -> SearchPreferences:
+        return SearchPreferences(
+            poll_interval_seconds=preferences.poll_interval_seconds,
+        )
 
     def _new_slots_for_notification(
         self,

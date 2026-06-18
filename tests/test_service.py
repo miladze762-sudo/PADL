@@ -2,7 +2,7 @@ import unittest
 import asyncio
 from datetime import datetime, timedelta
 
-from padlbot.models import MOSCOW_TZ, SearchPreferences, SlotCandidate
+from padlbot.models import DEFAULT_DURATIONS, DEFAULT_VENUE_IDS, MOSCOW_TZ, SearchPreferences, SlotCandidate
 from padlbot.service import SearchManager
 
 
@@ -153,7 +153,7 @@ class SearchManagerMonitoringTests(unittest.IsolatedAsyncioTestCase):
         task = manager.state.tasks[self.chat_id]
         self.assertEqual(
             response,
-            "Мониторинг запущен: свободная игра, все площадки, 17:00-22:00, мест: 2.",
+            "Мониторинг запущен: свободная игра, все площадки, без ограничения по времени, мест: 2.",
         )
         self.assertFalse(task.done())
         self.assertEqual(len(bot.messages), 1)
@@ -188,6 +188,50 @@ class SearchManagerMonitoringTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(manager.state.notified_slots[self.chat_id], set())
         self.assertEqual(bot.messages, [])
         self.assertEqual(coordinator.reserve_calls, [])
+
+    async def test_resume_active_searches_starts_tasks_without_start_message(self):
+        manager, storage, bot, coordinator = self.build_manager([[self.slot], [self.slot]])
+
+        resumed = manager.resume_active_searches([self.chat_id])
+        await wait_until(lambda: manager.scanner.calls >= 1)
+
+        task = manager.state.tasks[self.chat_id]
+        self.assertEqual(resumed, [self.chat_id])
+        self.assertFalse(task.done())
+        self.assertEqual(len(bot.messages), 1)
+        self.assertEqual(bot.messages[0]["chat_id"], self.chat_id)
+        self.assertIn("Найдены свободные слоты PADL", bot.messages[0]["text"])
+        self.assertEqual(storage.statuses[0], (self.chat_id, True, "мониторинг возобновлен"))
+        self.assertEqual(coordinator.reserve_calls, [])
+
+        await manager.stop_search(self.chat_id)
+
+    async def test_resume_active_searches_resets_legacy_preferences_to_free_play_defaults(self):
+        self.preferences = SearchPreferences(
+            start_time="17:00",
+            end_time="22:00",
+            tickets_count=1,
+            durations=(60,),
+            venue_ids=(12,),
+            target_dates=("2026-06-19",),
+            event_type="masterclass",
+            poll_interval_seconds=0.01,
+        )
+        manager, storage, bot, coordinator = self.build_manager([[self.slot]])
+
+        resumed = manager.resume_active_searches([self.chat_id])
+        saved_preferences = storage.saved_preferences[0][1]
+
+        self.assertEqual(resumed, [self.chat_id])
+        self.assertIsNone(saved_preferences.start_time)
+        self.assertIsNone(saved_preferences.end_time)
+        self.assertEqual(saved_preferences.target_dates, ())
+        self.assertEqual(saved_preferences.tickets_count, 2)
+        self.assertEqual(saved_preferences.durations, DEFAULT_DURATIONS)
+        self.assertEqual(saved_preferences.venue_ids, DEFAULT_VENUE_IDS)
+        self.assertEqual(saved_preferences.event_type, "free_play")
+
+        await manager.stop_search(self.chat_id)
 
 
 if __name__ == "__main__":
