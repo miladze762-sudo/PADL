@@ -1,0 +1,990 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PADL BOT: презентация по работе программы</title>
+  <style>
+    :root {
+      --bg: #eef3f8;
+      --ink: #102033;
+      --muted: #5b6b7d;
+      --line: #d7e0ea;
+      --panel: #ffffff;
+      --soft: #f6f9fc;
+      --blue: #1f6feb;
+      --blue-soft: #e9f1ff;
+      --green: #12805c;
+      --green-soft: #e6f5ef;
+      --red: #b42318;
+      --red-soft: #fff0ee;
+      --amber: #9a6700;
+      --amber-soft: #fff7df;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: Arial, Helvetica, sans-serif;
+      line-height: 1.45;
+    }
+
+    .deck {
+      width: min(1180px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 24px 0 48px;
+    }
+
+    .slide {
+      min-height: 720px;
+      margin: 0 0 24px;
+      padding: 54px 58px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      box-shadow: 0 18px 46px rgba(16, 32, 51, 0.08);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .slide::after {
+      content: attr(data-slide);
+      position: absolute;
+      right: 28px;
+      bottom: 22px;
+      color: #97a6b5;
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .slide[data-kind="title"] {
+      display: grid;
+      align-content: center;
+      background:
+        linear-gradient(145deg, rgba(31, 111, 235, 0.10), rgba(18, 128, 92, 0.07)),
+        var(--panel);
+    }
+
+    .eyebrow {
+      margin: 0 0 16px;
+      color: var(--blue);
+      font-size: 14px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    h1, h2, h3 {
+      margin: 0;
+      line-height: 1.08;
+    }
+
+    h1 {
+      max-width: 900px;
+      font-size: 64px;
+      letter-spacing: 0;
+    }
+
+    h2 {
+      max-width: 920px;
+      font-size: 44px;
+      letter-spacing: 0;
+    }
+
+    h3 {
+      font-size: 22px;
+    }
+
+    p {
+      margin: 0;
+    }
+
+    .lead {
+      max-width: 830px;
+      margin-top: 22px;
+      color: var(--muted);
+      font-size: 24px;
+    }
+
+    .subtitle {
+      max-width: 860px;
+      margin-top: 16px;
+      color: var(--muted);
+      font-size: 20px;
+    }
+
+    .topline {
+      display: flex;
+      justify-content: space-between;
+      gap: 24px;
+      align-items: flex-start;
+      margin-bottom: 38px;
+    }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      min-height: 34px;
+      padding: 7px 12px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      color: var(--muted);
+      background: var(--soft);
+      font-size: 14px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .grid {
+      display: grid;
+      gap: 18px;
+    }
+
+    .grid.two {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .grid.three {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .grid.four {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    .card {
+      padding: 22px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: var(--soft);
+    }
+
+    .card strong,
+    .metric strong {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 20px;
+    }
+
+    .card p,
+    .metric p,
+    .note p {
+      color: var(--muted);
+      font-size: 17px;
+    }
+
+    .hero-panel {
+      display: grid;
+      grid-template-columns: 1.1fr 0.9fr;
+      gap: 30px;
+      align-items: stretch;
+      margin-top: 44px;
+    }
+
+    .terminal {
+      padding: 22px;
+      border-radius: 14px;
+      background: #0f1724;
+      color: #e6edf3;
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 17px;
+      line-height: 1.7;
+    }
+
+    .terminal .muted {
+      color: #9fb0c2;
+    }
+
+    .flow {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 16px;
+      margin-top: 34px;
+    }
+
+    .flow-card {
+      min-height: 142px;
+      padding: 20px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: var(--soft);
+      position: relative;
+    }
+
+    .flow-card:not(:last-child)::after {
+      content: ">";
+      position: absolute;
+      right: -14px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      background: var(--blue);
+      color: white;
+      display: grid;
+      place-items: center;
+      font-weight: 800;
+      z-index: 1;
+    }
+
+    .flow-card span,
+    .step span {
+      display: inline-grid;
+      place-items: center;
+      width: 34px;
+      height: 34px;
+      margin-bottom: 14px;
+      border-radius: 50%;
+      background: var(--blue-soft);
+      color: var(--blue);
+      font-weight: 800;
+    }
+
+    .flow-card h3,
+    .step h3 {
+      margin-bottom: 9px;
+    }
+
+    .flow-card p,
+    .step p {
+      color: var(--muted);
+      font-size: 16px;
+    }
+
+    .pipeline {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 18px;
+      margin-top: 34px;
+      align-items: stretch;
+    }
+
+    .module {
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 22px;
+      background: var(--soft);
+    }
+
+    .module h3 {
+      margin-bottom: 14px;
+    }
+
+    .module ul,
+    .list {
+      margin: 0;
+      padding-left: 20px;
+      color: var(--muted);
+      font-size: 17px;
+    }
+
+    .module li,
+    .list li {
+      margin: 8px 0;
+    }
+
+    .center-diagram {
+      margin-top: 36px;
+      padding: 28px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: linear-gradient(180deg, #fbfdff, #f4f8fc);
+    }
+
+    .diagram-row {
+      display: flex;
+      gap: 14px;
+      align-items: center;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .node {
+      min-width: 168px;
+      min-height: 84px;
+      padding: 16px 18px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: white;
+      text-align: center;
+      display: grid;
+      align-content: center;
+      box-shadow: 0 8px 22px rgba(16, 32, 51, 0.06);
+    }
+
+    .node strong {
+      display: block;
+      margin-bottom: 4px;
+      font-size: 18px;
+    }
+
+    .node small {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .arrow {
+      color: var(--blue);
+      font-weight: 900;
+      font-size: 24px;
+    }
+
+    .command-grid {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 14px;
+      margin-top: 34px;
+    }
+
+    .command {
+      padding: 18px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: var(--soft);
+      min-height: 168px;
+    }
+
+    .command code {
+      display: inline-block;
+      margin-bottom: 14px;
+      padding: 8px 10px;
+      border-radius: 10px;
+      background: #0f1724;
+      color: #e6edf3;
+      font-size: 17px;
+    }
+
+    .command p {
+      color: var(--muted);
+      font-size: 15px;
+    }
+
+    .cycle {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 18px;
+      margin-top: 34px;
+    }
+
+    .step {
+      padding: 20px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: var(--soft);
+    }
+
+    .step.green span {
+      background: var(--green-soft);
+      color: var(--green);
+    }
+
+    .step.amber span {
+      background: var(--amber-soft);
+      color: var(--amber);
+    }
+
+    .metric-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 18px;
+      margin-top: 34px;
+    }
+
+    .metric {
+      min-height: 138px;
+      padding: 22px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: white;
+    }
+
+    .metric b {
+      display: block;
+      margin-bottom: 6px;
+      color: var(--blue);
+      font-size: 28px;
+    }
+
+    .storage-map {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+      margin-top: 34px;
+    }
+
+    .table-card {
+      padding: 20px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: var(--soft);
+    }
+
+    .table-card code {
+      display: inline-block;
+      margin-bottom: 10px;
+      padding: 7px 10px;
+      border-radius: 9px;
+      background: var(--blue-soft);
+      color: var(--blue);
+      font-weight: 800;
+    }
+
+    .table-card p {
+      color: var(--muted);
+      font-size: 16px;
+    }
+
+    .warning {
+      margin-top: 34px;
+      padding: 26px;
+      border: 1px solid #ffc9c2;
+      border-radius: 16px;
+      background: var(--red-soft);
+    }
+
+    .warning h3 {
+      color: var(--red);
+      margin-bottom: 16px;
+    }
+
+    .check-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .no-item {
+      padding: 18px;
+      border-radius: 12px;
+      background: white;
+      border: 1px solid #ffd6d1;
+      color: #66322b;
+      font-weight: 700;
+    }
+
+    .trouble-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+      margin-top: 34px;
+    }
+
+    .trouble {
+      padding: 18px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: var(--soft);
+    }
+
+    .trouble strong {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 18px;
+    }
+
+    .trouble p {
+      color: var(--muted);
+      font-size: 16px;
+    }
+
+    .note {
+      margin-top: 28px;
+      padding: 20px;
+      border-left: 5px solid var(--blue);
+      border-radius: 12px;
+      background: var(--blue-soft);
+    }
+
+    .summary {
+      display: grid;
+      grid-template-columns: 0.95fr 1.05fr;
+      gap: 30px;
+      align-items: center;
+      margin-top: 38px;
+    }
+
+    .big-number {
+      display: grid;
+      place-items: center;
+      width: 230px;
+      height: 230px;
+      border-radius: 50%;
+      background: var(--green-soft);
+      color: var(--green);
+      font-size: 84px;
+      font-weight: 900;
+      margin: 0 auto;
+    }
+
+    code {
+      font-family: Consolas, "Courier New", monospace;
+    }
+
+    @media (max-width: 900px) {
+      .slide {
+        min-height: auto;
+        padding: 34px 24px;
+      }
+
+      h1 {
+        font-size: 42px;
+      }
+
+      h2 {
+        font-size: 34px;
+      }
+
+      .hero-panel,
+      .pipeline,
+      .grid.two,
+      .grid.three,
+      .grid.four,
+      .flow,
+      .command-grid,
+      .cycle,
+      .metric-grid,
+      .storage-map,
+      .trouble-grid,
+      .summary {
+        grid-template-columns: 1fr;
+      }
+
+      .flow-card:not(:last-child)::after {
+        display: none;
+      }
+    }
+
+    @media print {
+      body {
+        background: white;
+      }
+
+      .deck {
+        width: 100%;
+        padding: 0;
+      }
+
+      .slide {
+        page-break-after: always;
+        min-height: 100vh;
+        margin: 0;
+        border: 0;
+        border-radius: 0;
+        box-shadow: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="deck">
+    <section class="slide" data-kind="title" data-slide="1 / 11">
+      <p class="eyebrow">PADL BOT</p>
+      <h1>Презентация по работе программы</h1>
+      <p class="lead">Как Telegram-бот следит за свободными слотами PADL, фильтрует подходящие варианты и сообщает пользователю, когда можно записаться.</p>
+      <div class="hero-panel">
+        <div class="terminal">
+          <div><span class="muted">PowerShell</span></div>
+          <div>.\.venv\Scripts\Activate.ps1</div>
+          <div>python -m padlbot</div>
+          <br>
+          <div><span class="muted">Telegram</span></div>
+          <div>/search</div>
+        </div>
+        <div class="card">
+          <strong>Ключевая идея</strong>
+          <p>Бот не бронирует слот автоматически. Он постоянно мониторит доступность и отправляет уведомление, а пользователь записывается вручную на сайте PADL.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" data-slide="2 / 11">
+      <div class="topline">
+        <div>
+          <p class="eyebrow">Задача</p>
+          <h2>Проблема и сценарий пользователя</h2>
+          <p class="subtitle">Свободные слоты появляются нерегулярно. Пользователю неудобно постоянно обновлять сайт и проверять все площадки вручную.</p>
+        </div>
+        <span class="tag">мониторинг вместо ручной проверки</span>
+      </div>
+      <div class="flow">
+        <div class="flow-card">
+          <span>1</span>
+          <h3>Нужно место</h3>
+          <p>Пользователь хочет найти слот для игры в падел.</p>
+        </div>
+        <div class="flow-card">
+          <span>2</span>
+          <h3>Слоты меняются</h3>
+          <p>Доступность на сайте может появиться в любой момент.</p>
+        </div>
+        <div class="flow-card">
+          <span>3</span>
+          <h3>Бот проверяет</h3>
+          <p>Программа регулярно обращается к API PADL.</p>
+        </div>
+        <div class="flow-card">
+          <span>4</span>
+          <h3>Пользователь реагирует</h3>
+          <p>Когда бот присылает слот, запись выполняется вручную на сайте.</p>
+        </div>
+      </div>
+      <div class="note">
+        <p>Главная польза: бот экономит внимание. Он не заменяет сайт PADL, а помогает быстрее заметить новые свободные варианты.</p>
+      </div>
+    </section>
+
+    <section class="slide" data-slide="3 / 11">
+      <div class="topline">
+        <div>
+          <p class="eyebrow">Архитектура</p>
+          <h2>Главная схема работы</h2>
+          <p class="subtitle">Система состоит из Telegram-интерфейса, процесса бота, клиента API PADL и локальной базы состояния.</p>
+        </div>
+        <span class="tag">Telegram -> бот -> API -> уведомление</span>
+      </div>
+      <div class="center-diagram">
+        <div class="diagram-row">
+          <div class="node"><strong>Пользователь</strong><small>команды в Telegram</small></div>
+          <div class="arrow">></div>
+          <div class="node"><strong>Telegram API</strong><small>getUpdates/sendMessage</small></div>
+          <div class="arrow">></div>
+          <div class="node"><strong>PADL BOT</strong><small>логика мониторинга</small></div>
+          <div class="arrow">></div>
+          <div class="node"><strong>API PADL</strong><small>доступные слоты</small></div>
+        </div>
+        <div class="diagram-row" style="margin-top:22px">
+          <div class="node"><strong>SQLite</strong><small>настройки и статус</small></div>
+          <div class="arrow">^</div>
+          <div class="node"><strong>SearchManager</strong><small>фоновая задача</small></div>
+          <div class="arrow">></div>
+          <div class="node"><strong>Уведомление</strong><small>новые слоты в Telegram</small></div>
+        </div>
+      </div>
+      <div class="pipeline">
+        <div class="module">
+          <h3>Вход</h3>
+          <ul>
+            <li>Команды `/start`, `/search`, `/now`, `/status`, `/stop`</li>
+            <li>Получение сообщений через Telegram polling</li>
+          </ul>
+        </div>
+        <div class="module">
+          <h3>Обработка</h3>
+          <ul>
+            <li>Запуск или остановка фонового мониторинга</li>
+            <li>Фильтрация слотов по правилам поиска</li>
+          </ul>
+        </div>
+        <div class="module">
+          <h3>Выход</h3>
+          <ul>
+            <li>Сообщение со свободными слотами</li>
+            <li>Ссылка на сайт для ручной записи</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" data-slide="4 / 11">
+      <div class="topline">
+        <div>
+          <p class="eyebrow">Запуск</p>
+          <h2>Как программа стартует</h2>
+          <p class="subtitle">Для работы нужны Python, зависимости, Telegram-токен в `.env` и команда запуска из папки проекта.</p>
+        </div>
+        <span class="tag">python -m padlbot</span>
+      </div>
+      <div class="grid two">
+        <div class="terminal">
+          <div><span class="muted">1. Окружение</span></div>
+          <div>python -m venv .venv</div>
+          <div>.\.venv\Scripts\Activate.ps1</div>
+          <div>pip install -r requirements.txt</div>
+          <br>
+          <div><span class="muted">2. Запуск</span></div>
+          <div>python -m padlbot</div>
+        </div>
+        <div class="card">
+          <strong>Что происходит внутри</strong>
+          <ul class="list">
+            <li>Читаются настройки из `.env`.</li>
+            <li>Открывается SQLite-база `data/padlbot.db`.</li>
+            <li>Создается клиент Telegram и клиент API PADL.</li>
+            <li>Проверяется, что не запущена вторая копия бота.</li>
+            <li>Запускается цикл получения сообщений из Telegram.</li>
+          </ul>
+        </div>
+      </div>
+      <div class="note">
+        <p>Окно PowerShell должно оставаться открытым. Пока команда работает, бот принимает команды и может вести мониторинг.</p>
+      </div>
+    </section>
+
+    <section class="slide" data-slide="5 / 11">
+      <div class="topline">
+        <div>
+          <p class="eyebrow">Telegram</p>
+          <h2>Основные команды</h2>
+          <p class="subtitle">Пользователь управляет ботом через короткие команды. Основная команда для работы - `/search`.</p>
+        </div>
+        <span class="tag">управление без интерфейса сайта</span>
+      </div>
+      <div class="command-grid">
+        <div class="command">
+          <code>/start</code>
+          <h3>Справка</h3>
+          <p>Показывает краткое описание и ссылку на сайт PADL.</p>
+        </div>
+        <div class="command">
+          <code>/search</code>
+          <h3>Мониторинг</h3>
+          <p>Запускает постоянную проверку свободных слотов.</p>
+        </div>
+        <div class="command">
+          <code>/now</code>
+          <h3>Проверка сейчас</h3>
+          <p>Показывает актуальные слоты без остановки мониторинга.</p>
+        </div>
+        <div class="command">
+          <code>/status</code>
+          <h3>Статус</h3>
+          <p>Сообщает, активен ли мониторинг и что было найдено.</p>
+        </div>
+        <div class="command">
+          <code>/stop</code>
+          <h3>Остановка</h3>
+          <p>Останавливает активную фоновую задачу поиска.</p>
+        </div>
+      </div>
+      <div class="note">
+        <p>Если бот не отвечает, первое действие пользователя - открыть бота в Telegram и нажать Start или отправить `/start`.</p>
+      </div>
+    </section>
+
+    <section class="slide" data-slide="6 / 11">
+      <div class="topline">
+        <div>
+          <p class="eyebrow">Мониторинг</p>
+          <h2>Цикл поиска свободных слотов</h2>
+          <p class="subtitle">После `/search` бот создает фоновую задачу. Она повторяется, пока пользователь не отправит `/stop`.</p>
+        </div>
+        <span class="tag">примерно каждые 15 секунд</span>
+      </div>
+      <div class="cycle">
+        <div class="step">
+          <span>1</span>
+          <h3>Прочитать настройки</h3>
+          <p>Берутся сохраненные предпочтения пользователя или значения по умолчанию.</p>
+        </div>
+        <div class="step">
+          <span>2</span>
+          <h3>Запросить API PADL</h3>
+          <p>Бот проверяет площадки и доступные события через `date-options`.</p>
+        </div>
+        <div class="step">
+          <span>3</span>
+          <h3>Отфильтровать слоты</h3>
+          <p>Оставляются варианты с нужным числом мест и подходящей длительностью.</p>
+        </div>
+        <div class="step green">
+          <span>4</span>
+          <h3>Найти новые</h3>
+          <p>Слоты, которые уже отправлялись во время текущего запуска, не дублируются.</p>
+        </div>
+        <div class="step green">
+          <span>5</span>
+          <h3>Отправить сообщение</h3>
+          <p>Если есть новые варианты, бот присылает их в Telegram со ссылкой на сайт.</p>
+        </div>
+        <div class="step amber">
+          <span>6</span>
+          <h3>Подождать и повторить</h3>
+          <p>После паузы цикл начинается снова. Временные ошибки не останавливают бота.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" data-slide="7 / 11">
+      <div class="topline">
+        <div>
+          <p class="eyebrow">Правила отбора</p>
+          <h2>Критерии поиска по умолчанию</h2>
+          <p class="subtitle">Текущий режим ищет широко: без ограничения по времени, по всем основным площадкам и с приоритетом длинных слотов.</p>
+        </div>
+        <span class="tag">SearchPreferences</span>
+      </div>
+      <div class="metric-grid">
+        <div class="metric">
+          <b>3</b>
+          <strong>Площадки</strong>
+          <p>Баррикадная, Третьяковская, Римская.</p>
+        </div>
+        <div class="metric">
+          <b>2</b>
+          <strong>Места</strong>
+          <p>Бот ищет слоты, где доступно минимум два места.</p>
+        </div>
+        <div class="metric">
+          <b>120</b>
+          <strong>Минут в приоритете</strong>
+          <p>Длительности проверяются как 120, 90 и 60 минут.</p>
+        </div>
+        <div class="metric">
+          <b>free</b>
+          <strong>Тип события</strong>
+          <p>Формат PADL: `Свободная игра`.</p>
+        </div>
+        <div class="metric">
+          <b>0</b>
+          <strong>Ограничений по времени</strong>
+          <p>Подходят любые доступные дни и часы в горизонте сайта.</p>
+        </div>
+        <div class="metric">
+          <b>15с</b>
+          <strong>Интервал</strong>
+          <p>Пауза между проверками по умолчанию.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" data-slide="8 / 11">
+      <div class="topline">
+        <div>
+          <p class="eyebrow">Состояние</p>
+          <h2>Что хранится в SQLite</h2>
+          <p class="subtitle">Локальная база помогает боту помнить настройки и восстанавливать активный мониторинг после перезапуска.</p>
+        </div>
+        <span class="tag">data/padlbot.db</span>
+      </div>
+      <div class="storage-map">
+        <div class="table-card">
+          <code>profiles</code>
+          <p>Старый профиль пользователя: имя, телефон и email. Для текущего `/search` обычно не нужен.</p>
+        </div>
+        <div class="table-card">
+          <code>preferences</code>
+          <p>Параметры поиска: площадки, длительности, количество мест, интервал проверки.</p>
+        </div>
+        <div class="table-card">
+          <code>search_state</code>
+          <p>Активен ли мониторинг и какой последний статус был записан.</p>
+        </div>
+        <div class="table-card">
+          <code>last_bookings</code>
+          <p>Legacy-данные о последней подтвержденной брони, если использовался старый сценарий.</p>
+        </div>
+      </div>
+      <div class="note">
+        <p>Во время одного активного запуска список уже отправленных слотов хранится в памяти, чтобы бот не присылал одно и то же повторно.</p>
+      </div>
+    </section>
+
+    <section class="slide" data-slide="9 / 11">
+      <div class="topline">
+        <div>
+          <p class="eyebrow">Граница автоматизации</p>
+          <h2>Что бот не делает</h2>
+          <p class="subtitle">Это важная часть работы программы: текущий режим создан для мониторинга и уведомлений, а не для автоматической записи.</p>
+        </div>
+        <span class="tag">без авто-бронирования</span>
+      </div>
+      <div class="warning">
+        <h3>В режиме `/search` бот только сообщает о найденных слотах</h3>
+        <div class="check-grid">
+          <div class="no-item">Не бронирует слот автоматически</div>
+          <div class="no-item">Не удерживает слот на сайте</div>
+          <div class="no-item">Не обходит СМС или другие проверки</div>
+          <div class="no-item">Не подтверждает запись за пользователя</div>
+        </div>
+      </div>
+      <div class="center-diagram">
+        <div class="diagram-row">
+          <div class="node"><strong>Бот нашел слот</strong><small>уведомление в Telegram</small></div>
+          <div class="arrow">></div>
+          <div class="node"><strong>Пользователь открывает сайт</strong><small>https://outdoor.sport.mos.ru/#venues-events</small></div>
+          <div class="arrow">></div>
+          <div class="node"><strong>Запись вручную</strong><small>обычный процесс PADL</small></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" data-slide="10 / 11">
+      <div class="topline">
+        <div>
+          <p class="eyebrow">Диагностика</p>
+          <h2>Частые ошибки и как их читать</h2>
+          <p class="subtitle">Большинство проблем связано с настройками запуска, Telegram-токеном или тем, что бот уже запущен где-то еще.</p>
+        </div>
+        <span class="tag">быстрая проверка</span>
+      </div>
+      <div class="trouble-grid">
+        <div class="trouble">
+          <strong>`TELEGRAM_BOT_TOKEN is required`</strong>
+          <p>В `.env` нет токена или команда запущена не из папки проекта.</p>
+        </div>
+        <div class="trouble">
+          <strong>`chat not found`</strong>
+          <p>Пользователь еще не нажал Start в Telegram-боте.</p>
+        </div>
+        <div class="trouble">
+          <strong>`Another bot instance is already running`</strong>
+          <p>На этом компьютере уже работает другая копия процесса.</p>
+        </div>
+        <div class="trouble">
+          <strong>Бот молчит</strong>
+          <p>Проверить интернет, токен, открытое окно PowerShell и отсутствие второй копии.</p>
+        </div>
+        <div class="trouble">
+          <strong>Нужно проверить без Telegram</strong>
+          <p>Запустить `python scripts\dry_run.py` и посмотреть, найден ли подходящий слот.</p>
+        </div>
+        <div class="trouble">
+          <strong>Временная ошибка API</strong>
+          <p>Бот записывает статус ошибки и пробует снова после следующей паузы.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" data-slide="11 / 11">
+      <div class="topline">
+        <div>
+          <p class="eyebrow">Итог</p>
+          <h2>Что дает PADL BOT</h2>
+          <p class="subtitle">Программа берет на себя повторяющуюся проверку сайта и оставляет человеку главное действие: быстро записаться, когда слот появился.</p>
+        </div>
+        <span class="tag">мониторинг + уведомление</span>
+      </div>
+      <div class="summary">
+        <div>
+          <div class="big-number">15</div>
+          <p style="margin-top:16px;text-align:center;color:var(--muted);font-size:18px">примерный интервал проверки в секундах</p>
+        </div>
+        <div class="grid">
+          <div class="card">
+            <strong>Пользовательский результат</strong>
+            <p>Вместо ручной проверки сайта пользователь получает сообщение, когда появляются новые подходящие слоты.</p>
+          </div>
+          <div class="card">
+            <strong>Технический результат</strong>
+            <p>Бот стабильно работает через Telegram polling, API PADL, фоновую задачу мониторинга и локальное хранение состояния.</p>
+          </div>
+          <div class="card">
+            <strong>Граница ответственности</strong>
+            <p>Бот уведомляет. Запись и подтверждение пользователь выполняет вручную на сайте PADL.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

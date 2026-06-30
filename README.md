@@ -5,7 +5,7 @@ The runtime uses `aiohttp` for both Telegram polling and the site API.
 
 ## What It Does
 
-- Checks all three venues for `free_play` slots.
+- Checks selected PADL venues for `free_play` slots; defaults to Barrikadnaya, Tretyakovskaya, and Rimskaya.
 - Uses the default target: any available day, no time-of-day limit, 2 places, duration preference `120 -> 90 -> 60`.
 - Sends Telegram notifications when new matching free slots appear.
 - Keeps monitoring after notifications and suppresses repeated messages for the same slot during the active run.
@@ -36,6 +36,9 @@ python -m padlbot
 
 - `/start` - show setup help.
 - `/profile FIRST LAST PHONE EMAIL` - save an old booking profile if needed for legacy SMS commands.
+- `/venues` - show current venues and available IDs.
+- `/venues 12,14` - monitor only selected venues.
+- `/venues all` - restore all default venues.
 - `/search` - start continuous monitoring without a time-of-day limit.
 - `/now` - show slots available right now without stopping monitoring.
 - `/status` - show current state and last booking.

@@ -19,6 +19,7 @@ def start_help_message() -> str:
         "Бот ищет без ограничения по времени.\n"
         "Записывайтесь вручную на сайте PADL:\n"
         f"{PADL_BOOKING_URL}\n"
+        "Площадки: /venues\n"
         "Другие команды: /now, /status, /stop"
     )
 

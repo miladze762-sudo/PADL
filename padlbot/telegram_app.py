@@ -1,8 +1,16 @@
 from __future__ import annotations
 
+from dataclasses import replace
+
 from .localization import start_help_message
 from .models import Profile, SearchPreferences
 from .selection import extract_sms_code, normalize_phone
+from .venues import (
+    VenueSelectionError,
+    current_venues_message,
+    parse_venue_ids,
+    venues_saved_message,
+)
 
 try:
     from aiogram import Dispatcher
@@ -64,10 +72,29 @@ def build_dispatcher(manager, storage):
             "Запустите мониторинг: /search"
         )
 
+    @dp.message(Command("venues"))
+    async def venues(message: Message):
+        args = _command_args(message.text)
+        stored_preferences = storage.get_preferences(message.chat.id)
+        if not args:
+            await message.answer(current_venues_message(stored_preferences.venue_ids))
+            return
+        try:
+            venue_ids = parse_venue_ids(args)
+        except VenueSelectionError as exc:
+            await message.answer(str(exc))
+            return
+        storage.save_preferences(
+            message.chat.id,
+            replace(stored_preferences, venue_ids=venue_ids),
+        )
+        await message.answer(venues_saved_message(venue_ids))
+
     @dp.message(Command("search"))
     async def search(message: Message):
         stored_preferences = storage.get_preferences(message.chat.id)
         preferences = SearchPreferences(
+            venue_ids=stored_preferences.venue_ids,
             poll_interval_seconds=stored_preferences.poll_interval_seconds,
         )
         try:

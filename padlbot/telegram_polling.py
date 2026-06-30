@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import asyncio
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Any
 
 import aiohttp
@@ -9,6 +9,12 @@ import aiohttp
 from .localization import start_help_message
 from .models import Profile, SearchPreferences
 from .selection import extract_sms_code, normalize_phone
+from .venues import (
+    VenueSelectionError,
+    current_venues_message,
+    parse_venue_ids,
+    venues_saved_message,
+)
 
 
 def _command_args(text: str | None) -> str:
@@ -118,9 +124,31 @@ async def handle_message(message: IncomingMessage, *, bot: TelegramBot, manager,
         )
         return
 
+    if command == "/venues":
+        args = _command_args(text)
+        stored_preferences = storage.get_preferences(message.chat_id)
+        if not args:
+            await bot.send_message(
+                message.chat_id,
+                current_venues_message(stored_preferences.venue_ids),
+            )
+            return
+        try:
+            venue_ids = parse_venue_ids(args)
+        except VenueSelectionError as exc:
+            await bot.send_message(message.chat_id, str(exc))
+            return
+        storage.save_preferences(
+            message.chat_id,
+            replace(stored_preferences, venue_ids=venue_ids),
+        )
+        await bot.send_message(message.chat_id, venues_saved_message(venue_ids))
+        return
+
     if command == "/search":
         stored_preferences = storage.get_preferences(message.chat_id)
         preferences = SearchPreferences(
+            venue_ids=stored_preferences.venue_ids,
             poll_interval_seconds=stored_preferences.poll_interval_seconds,
         )
         try:

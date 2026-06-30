@@ -3,13 +3,7 @@ from __future__ import annotations
 from .localization import localize_court_title, localize_venue_title
 from .models import SearchPreferences, SlotCandidate
 from .selection import choose_best_slot, extract_candidates_from_available_events, sort_slots
-
-
-DEFAULT_VENUE_TITLES = {
-    12: "Баррикадная",
-    14: "Третьяковская",
-    15: "Римская",
-}
+from .venues import KNOWN_VENUE_TITLES
 
 
 class SlotScanner:
@@ -40,7 +34,7 @@ class SlotScanner:
                         venue_id=venue_id,
                         venue_title=venue_titles.get(
                             venue_id,
-                            DEFAULT_VENUE_TITLES.get(venue_id, str(venue_id)),
+                            KNOWN_VENUE_TITLES.get(venue_id, str(venue_id)),
                         ),
                         court_id=court_id,
                         court_title=court_title,
@@ -53,8 +47,8 @@ class SlotScanner:
         try:
             response = await self.api.venues()
         except Exception:
-            return DEFAULT_VENUE_TITLES.copy()
-        titles: dict[int, str] = DEFAULT_VENUE_TITLES.copy()
+            return KNOWN_VENUE_TITLES.copy()
+        titles: dict[int, str] = KNOWN_VENUE_TITLES.copy()
         for venue in response.get("data", []):
             try:
                 venue_id = int(venue.get("id"))

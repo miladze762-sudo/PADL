@@ -2,7 +2,7 @@ import unittest
 import asyncio
 from datetime import datetime, timedelta
 
-from padlbot.models import DEFAULT_DURATIONS, DEFAULT_VENUE_IDS, MOSCOW_TZ, SearchPreferences, SlotCandidate
+from padlbot.models import DEFAULT_DURATIONS, MOSCOW_TZ, SearchPreferences, SlotCandidate
 from padlbot.service import SearchManager
 
 
@@ -162,6 +162,19 @@ class SearchManagerMonitoringTests(unittest.IsolatedAsyncioTestCase):
 
         await manager.stop_search(self.chat_id)
 
+    async def test_search_start_message_names_selected_venues(self):
+        self.preferences = SearchPreferences(venue_ids=(14,), poll_interval_seconds=0.01)
+        manager, storage, bot, coordinator = self.build_manager([[self.slot]])
+
+        response = await manager.start_search(self.chat_id, self.preferences)
+
+        self.assertEqual(
+            response,
+            "Мониторинг запущен: свободная игра, Третьяковская, без ограничения по времени, мест: 2.",
+        )
+
+        await manager.stop_search(self.chat_id)
+
     async def test_monitoring_does_not_repeat_same_slot_notification(self):
         manager, storage, bot, coordinator = self.build_manager([[self.slot], [self.slot]])
 
@@ -206,7 +219,7 @@ class SearchManagerMonitoringTests(unittest.IsolatedAsyncioTestCase):
 
         await manager.stop_search(self.chat_id)
 
-    async def test_resume_active_searches_resets_legacy_preferences_to_free_play_defaults(self):
+    async def test_resume_active_searches_keeps_saved_venues_and_resets_legacy_filters(self):
         self.preferences = SearchPreferences(
             start_time="17:00",
             end_time="22:00",
@@ -228,7 +241,7 @@ class SearchManagerMonitoringTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(saved_preferences.target_dates, ())
         self.assertEqual(saved_preferences.tickets_count, 2)
         self.assertEqual(saved_preferences.durations, DEFAULT_DURATIONS)
-        self.assertEqual(saved_preferences.venue_ids, DEFAULT_VENUE_IDS)
+        self.assertEqual(saved_preferences.venue_ids, (12,))
         self.assertEqual(saved_preferences.event_type, "free_play")
 
         await manager.stop_search(self.chat_id)

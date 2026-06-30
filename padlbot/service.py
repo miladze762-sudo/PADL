@@ -11,6 +11,7 @@ from .localization import event_type_label
 from .models import MOSCOW_TZ, PendingBooking, SearchPreferences, SlotCandidate, parse_datetime
 from .scanner import SlotScanner
 from .storage import Storage
+from .venues import venue_selection_label
 
 
 class UserVisibleError(RuntimeError):
@@ -76,7 +77,8 @@ class SearchManager:
         self.state.notified_slots[chat_id] = set()
         self.state.tasks[chat_id] = asyncio.create_task(self._search_loop(chat_id))
         return (
-            f"Мониторинг запущен: {event_type_label(preferences.event_type)}, все площадки, "
+            f"Мониторинг запущен: {event_type_label(preferences.event_type)}, "
+            f"{venue_selection_label(preferences.venue_ids)}, "
             f"без ограничения по времени, мест: {preferences.tickets_count}."
         )
 
@@ -173,6 +175,7 @@ class SearchManager:
 
     def _unbounded_preferences(self, preferences: SearchPreferences) -> SearchPreferences:
         return SearchPreferences(
+            venue_ids=preferences.venue_ids,
             poll_interval_seconds=preferences.poll_interval_seconds,
         )
 

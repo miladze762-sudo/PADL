@@ -12,3 +12,6 @@ __pycache__/
 logs/
 tmp*/
 .superpowers/
+
+.trigger
+node_modules/

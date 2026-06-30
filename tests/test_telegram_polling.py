@@ -1,6 +1,6 @@
 import unittest
 
-from padlbot.models import DEFAULT_DURATIONS, DEFAULT_VENUE_IDS, SearchPreferences
+from padlbot.models import DEFAULT_DURATIONS, SearchPreferences
 from padlbot.telegram_polling import IncomingMessage, handle_message
 
 
@@ -37,6 +37,19 @@ class FakeSearchStorage:
         return self.preferences
 
 
+class FakeVenueStorage:
+    def __init__(self, preferences=None):
+        self.preferences = preferences or SearchPreferences(venue_ids=(12,), poll_interval_seconds=7)
+        self.saved_preferences = []
+
+    def get_preferences(self, chat_id):
+        return self.preferences
+
+    def save_preferences(self, chat_id, preferences):
+        self.preferences = preferences
+        self.saved_preferences.append((chat_id, preferences))
+
+
 class FakeSearchManager:
     def __init__(self):
         self.calls = []
@@ -64,11 +77,87 @@ class TelegramPollingMessageTests(unittest.IsolatedAsyncioTestCase):
             "Бот ищет без ограничения по времени.\n"
             "Записывайтесь вручную на сайте PADL:\n"
             "https://outdoor.sport.mos.ru/#venues-events\n"
+            "Площадки: /venues\n"
             "Другие команды: /now, /status, /stop",
         )
         self.assertNotIn("1.", bot.messages[0]["text"])
         self.assertNotIn("2.", bot.messages[0]["text"])
+        self.assertIn("Площадки: /venues", bot.messages[0]["text"])
         self.assertIn("Другие команды: /now, /status, /stop", bot.messages[0]["text"])
+
+    async def test_venues_command_saves_selected_venues(self):
+        bot = FakeBot()
+        storage = FakeVenueStorage()
+
+        await handle_message(
+            IncomingMessage(chat_id=100, text="/venues 14,15"),
+            bot=bot,
+            manager=None,
+            storage=storage,
+        )
+
+        self.assertEqual(storage.saved_preferences[0][0], 100)
+        saved = storage.saved_preferences[0][1]
+        self.assertEqual(saved.venue_ids, (14, 15))
+        self.assertEqual(saved.poll_interval_seconds, 7)
+        self.assertEqual(
+            bot.messages[0]["text"],
+            "Площадки сохранены: Третьяковская, Римская.",
+        )
+
+    async def test_venues_command_without_args_lists_current_and_available_venues(self):
+        bot = FakeBot()
+        storage = FakeVenueStorage(SearchPreferences(venue_ids=(14,)))
+
+        await handle_message(
+            IncomingMessage(chat_id=100, text="/venues"),
+            bot=bot,
+            manager=None,
+            storage=storage,
+        )
+
+        self.assertEqual(
+            bot.messages[0]["text"],
+            "Текущие площадки: Третьяковская.\n\n"
+            "Изменить: /venues 12,14\n"
+            "Все площадки: /venues all\n"
+            "Доступные площадки:\n"
+            "12 - Баррикадная\n"
+            "14 - Третьяковская\n"
+            "15 - Римская",
+        )
+
+    async def test_venues_all_restores_default_venues(self):
+        bot = FakeBot()
+        storage = FakeVenueStorage(SearchPreferences(venue_ids=(14,)))
+
+        await handle_message(
+            IncomingMessage(chat_id=100, text="/venues all"),
+            bot=bot,
+            manager=None,
+            storage=storage,
+        )
+
+        saved = storage.saved_preferences[0][1]
+        self.assertEqual(saved.venue_ids, (12, 14, 15))
+        self.assertEqual(bot.messages[0]["text"], "Площадки сохранены: все площадки.")
+
+    async def test_venues_command_rejects_unknown_venue(self):
+        bot = FakeBot()
+        storage = FakeVenueStorage()
+
+        await handle_message(
+            IncomingMessage(chat_id=100, text="/venues 99"),
+            bot=bot,
+            manager=None,
+            storage=storage,
+        )
+
+        self.assertEqual(storage.saved_preferences, [])
+        self.assertEqual(
+            bot.messages[0]["text"],
+            "Неизвестная площадка: 99. Доступны: 12, 14, 15.",
+        )
 
     async def test_profile_usage_message_is_russian(self):
         bot = FakeBot()
@@ -114,7 +203,7 @@ class TelegramPollingMessageTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(manager.calls, [100])
         self.assertEqual(bot.messages[0]["text"], "current slots")
 
-    async def test_search_uses_default_free_play_preferences(self):
+    async def test_search_uses_default_free_play_preferences_and_saved_venues(self):
         bot = FakeBot()
         manager = FakeSearchManager()
 
@@ -133,7 +222,7 @@ class TelegramPollingMessageTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(preferences.target_dates, ())
         self.assertEqual(preferences.tickets_count, 2)
         self.assertEqual(preferences.durations, DEFAULT_DURATIONS)
-        self.assertEqual(preferences.venue_ids, DEFAULT_VENUE_IDS)
+        self.assertEqual(preferences.venue_ids, (12,))
         self.assertEqual(preferences.event_type, "free_play")
 
 
