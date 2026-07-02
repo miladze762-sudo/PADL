@@ -51,6 +51,19 @@ class Storage:
                     tickets_count INTEGER NOT NULL,
                     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
                 );
+
+                CREATE TABLE IF NOT EXISTS notified_slots (
+                    chat_id INTEGER NOT NULL,
+                    slot_key TEXT NOT NULL,
+                    first_notified_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY(chat_id, slot_key)
+                );
+
+                CREATE TABLE IF NOT EXISTS telegram_polling_state (
+                    id INTEGER PRIMARY KEY CHECK (id = 1),
+                    last_update_id INTEGER,
+                    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+                );
                 """
             )
             self._ensure_column(conn, "preferences", "target_dates", "TEXT NOT NULL DEFAULT '[]'")
@@ -182,6 +195,39 @@ class Storage:
                 """
             ).fetchall()
         return [int(row["chat_id"]) for row in rows]
+
+    def get_last_update_id(self) -> int | None:
+        with self._connect() as conn:
+            row = conn.execute(
+                "SELECT last_update_id FROM telegram_polling_state WHERE id = 1"
+            ).fetchone()
+        if row is None or row["last_update_id"] is None:
+            return None
+        return int(row["last_update_id"])
+
+    def save_last_update_id(self, update_id: int) -> None:
+        with self._connect() as conn:
+            conn.execute(
+                """
+                INSERT INTO telegram_polling_state (id, last_update_id, updated_at)
+                VALUES (1, ?, CURRENT_TIMESTAMP)
+                ON CONFLICT(id) DO UPDATE SET
+                    last_update_id = excluded.last_update_id,
+                    updated_at = CURRENT_TIMESTAMP
+                """,
+                (update_id,),
+            )
+
+    def mark_slot_notified(self, chat_id: int, slot_key: str) -> bool:
+        with self._connect() as conn:
+            cursor = conn.execute(
+                """
+                INSERT OR IGNORE INTO notified_slots (chat_id, slot_key)
+                VALUES (?, ?)
+                """,
+                (chat_id, slot_key),
+            )
+            return cursor.rowcount == 1
 
     def save_last_booking(self, chat_id: int, result: BookingResult) -> None:
         slot = result.slot

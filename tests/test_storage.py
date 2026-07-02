@@ -77,6 +77,31 @@ class StorageTests(unittest.TestCase):
         finally:
             db_path.unlink(missing_ok=True)
 
+    def test_telegram_polling_state_round_trip(self):
+        db_path = Path.cwd() / "test-polling-state.db"
+        try:
+            storage = Storage(db_path)
+            storage.initialize()
+
+            self.assertIsNone(storage.get_last_update_id())
+            storage.save_last_update_id(123456)
+
+            self.assertEqual(storage.get_last_update_id(), 123456)
+        finally:
+            db_path.unlink(missing_ok=True)
+
+    def test_notified_slots_suppress_duplicates_after_restart(self):
+        db_path = Path.cwd() / "test-notified-slots.db"
+        try:
+            storage = Storage(db_path)
+            storage.initialize()
+
+            self.assertTrue(storage.mark_slot_notified(100, "slot-1"))
+            self.assertFalse(storage.mark_slot_notified(100, "slot-1"))
+            self.assertTrue(storage.mark_slot_notified(100, "slot-2"))
+        finally:
+            db_path.unlink(missing_ok=True)
+
 
 if __name__ == "__main__":
     unittest.main()
