@@ -24,6 +24,11 @@ def _command_args(text: str | None) -> str:
     return parts[1].strip() if len(parts) > 1 else ""
 
 
+def is_telegram_conflict_error(exc: BaseException) -> bool:
+    text = str(exc).lower()
+    return "409" in text and "conflict" in text
+
+
 @dataclass(frozen=True)
 class IncomingMessage:
     chat_id: int
@@ -60,6 +65,12 @@ class TelegramBot:
             payload["offset"] = offset
         data = await self._request("getUpdates", payload)
         return list(data.get("result") or [])
+
+    async def delete_webhook(self, *, drop_pending_updates: bool = False) -> None:
+        await self._request(
+            "deleteWebhook",
+            {"drop_pending_updates": drop_pending_updates},
+        )
 
     async def _request(self, method: str, payload: dict[str, Any]) -> dict[str, Any]:
         if self.session is None:
@@ -174,6 +185,13 @@ async def handle_message(message: IncomingMessage, *, bot: TelegramBot, manager,
         await bot.send_message(message.chat_id, await manager.stop_search(message.chat_id))
         return
 
+    if command in {"/code", "/resend"} and getattr(manager, "runtime_mode", "") == "trigger-daemon":
+        await bot.send_message(
+            message.chat_id,
+            "Автоматическое удержание слотов и СМС-подтверждение в облачном режиме отключены.",
+        )
+        return
+
     if command == "/code":
         sms_code = extract_sms_code(_command_args(text))
         if not sms_code:
@@ -196,18 +214,51 @@ async def handle_message(message: IncomingMessage, *, bot: TelegramBot, manager,
     await bot.send_message(message.chat_id, "Неизвестная команда. Отправьте /start для справки.")
 
 
-async def polling_loop(*, bot: TelegramBot, manager, storage) -> None:
-    offset: int | None = None
+async def polling_loop(
+    *,
+    bot: TelegramBot,
+    manager,
+    storage,
+    on_update_processed=None,
+    on_polling_error=None,
+    conflict_exit_seconds: int | None = None,
+) -> None:
+    last_update_id = storage.get_last_update_id() if hasattr(storage, "get_last_update_id") else None
+    offset: int | None = None if last_update_id is None else last_update_id + 1
+    conflict_started_at: float | None = None
     while True:
         try:
             updates = await bot.get_updates(offset)
+            conflict_started_at = None
             for update in updates:
-                offset = int(update["update_id"]) + 1
+                update_id = int(update["update_id"])
                 message = _extract_message(update)
                 if message is not None:
                     await handle_message(message, bot=bot, manager=manager, storage=storage)
+                last_update_id = update_id
+                offset = update_id + 1
+                if hasattr(storage, "save_last_update_id"):
+                    storage.save_last_update_id(update_id)
+                if on_update_processed is not None:
+                    on_update_processed(update_id)
         except asyncio.CancelledError:
             raise
+        except RuntimeError as exc:
+            if str(exc) == "stop polling":
+                raise
+            if is_telegram_conflict_error(exc):
+                loop = asyncio.get_running_loop()
+                if conflict_started_at is None:
+                    conflict_started_at = loop.time()
+                if on_polling_error is not None:
+                    on_polling_error("conflict", str(exc))
+                if conflict_exit_seconds is not None and loop.time() - conflict_started_at >= conflict_exit_seconds:
+                    raise
+                print(f"Telegram polling conflict: {exc}")
+                await asyncio.sleep(5)
+                continue
+            print(f"Telegram polling error: {exc}")
+            await asyncio.sleep(5)
         except Exception as exc:
             print(f"Telegram polling error: {exc}")
             await asyncio.sleep(5)
