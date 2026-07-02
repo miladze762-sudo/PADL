@@ -52,6 +52,7 @@ class SearchManager:
         self.scanner = SlotScanner(api)
         self.coordinator = BookingCoordinator(api)
         self.state = RuntimeState.empty()
+        self.runtime_mode = config.runtime_mode if config is not None else "local"
 
     def resume_active_searches(self, chat_ids) -> list[int]:
         resumed: list[int] = []
@@ -92,6 +93,13 @@ class SearchManager:
         self.state.notified_slots.pop(chat_id, None)
         self.storage.set_search_active(chat_id, False, "остановлен")
         return "Мониторинг остановлен."
+
+    async def cancel_all_searches(self) -> None:
+        tasks = [task for task in self.state.tasks.values() if not task.done()]
+        for task in tasks:
+            task.cancel()
+        if tasks:
+            await asyncio.gather(*tasks, return_exceptions=True)
 
     async def status_message(self, chat_id: int) -> str:
         active, status = self.storage.get_search_state(chat_id)
@@ -188,7 +196,12 @@ class SearchManager:
         new_slots: list[SlotCandidate] = []
         for slot in slots:
             key = self._slot_key(slot)
-            if key in notified:
+            storage_key = "|".join(str(part) for part in key)
+            if hasattr(self.storage, "mark_slot_notified"):
+                if not self.storage.mark_slot_notified(chat_id, storage_key):
+                    notified.add(key)
+                    continue
+            elif key in notified:
                 continue
             notified.add(key)
             new_slots.append(slot)

@@ -247,5 +247,58 @@ class SearchManagerMonitoringTests(unittest.IsolatedAsyncioTestCase):
         await manager.stop_search(self.chat_id)
 
 
+class FakeDurableNotificationStorage(FakeMonitoringStorage):
+    def __init__(self, preferences):
+        super().__init__(preferences)
+        self.notified = set()
+
+    def mark_slot_notified(self, chat_id, slot_key):
+        key = (chat_id, slot_key)
+        if key in self.notified:
+            return False
+        self.notified.add(key)
+        return True
+
+
+class SearchManagerTriggerModeTests(unittest.IsolatedAsyncioTestCase):
+    async def test_notified_slots_use_storage_to_suppress_soft_restart_duplicates(self):
+        preferences = SearchPreferences(poll_interval_seconds=0.01)
+        storage = FakeDurableNotificationStorage(preferences)
+        bot = FakeMonitoringBot()
+        manager = SearchManager(api=None, storage=storage, bot=bot, config=None)
+        manager.runtime_mode = "trigger-daemon"
+        slot = SlotCandidate(
+            venue_id=14,
+            venue_title="Tretyakovskaya",
+            court_id=13,
+            court_title="Court 2",
+            date_key="2026-06-11",
+            event_id=793,
+            starts_at="2026-06-11T17:00:00.000+03:00",
+            ends_at="2026-06-11T18:00:00.000+03:00",
+            duration_minutes=60,
+            available_tickets=2,
+        )
+
+        first = manager._new_slots_for_notification(100, [slot])
+        second = manager._new_slots_for_notification(100, [slot])
+
+        self.assertEqual(first, [slot])
+        self.assertEqual(second, [])
+
+    async def test_cancel_all_searches_cancels_running_tasks(self):
+        preferences = SearchPreferences(poll_interval_seconds=10)
+        storage = FakeMonitoringStorage(preferences)
+        bot = FakeMonitoringBot()
+        manager = SearchManager(api=None, storage=storage, bot=bot, config=None)
+        manager.scanner = FakeMonitoringScanner([[]])
+        manager.coordinator = FakeMonitoringCoordinator()
+
+        await manager.start_search(100, preferences)
+        await manager.cancel_all_searches()
+
+        self.assertTrue(manager.state.tasks[100].cancelled() or manager.state.tasks[100].done())
+
+
 if __name__ == "__main__":
     unittest.main()
