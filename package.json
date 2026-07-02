@@ -1,13 +1,19 @@
 {
   "scripts": {
     "trigger:dev": "trigger dev",
-    "trigger:deploy": "trigger deploy"
+    "trigger:deploy": "trigger deploy",
+    "trigger:dry-run": "trigger deploy --dry-run",
+    "test:trigger": "vitest run src/trigger"
   },
   "dependencies": {
+    "@trigger.dev/python": "4.4.6",
     "@trigger.dev/sdk": "4.4.6"
   },
   "devDependencies": {
     "@trigger.dev/build": "4.4.6",
-    "trigger.dev": "^4.4.6"
+    "@types/node": "26.1.0",
+    "trigger.dev": "^4.4.6",
+    "typescript": "6.0.3",
+    "vitest": "4.1.9"
   }
 }

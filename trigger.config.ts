@@ -1,4 +1,5 @@
 import { defineConfig } from "@trigger.dev/sdk";
+import { pythonExtension } from "@trigger.dev/python/extension";
 
 export default defineConfig({
   project: "proj_idvrbofrajznnafltimb",
@@ -16,4 +17,12 @@ export default defineConfig({
     },
   },
   dirs: ["./src/trigger"],
+  build: {
+    extensions: [
+      pythonExtension({
+        scripts: ["./padlbot/**/*.py", "./src/trigger/**/*.py"],
+        requirementsFile: "./requirements.txt",
+      }),
+    ],
+  },
 });
