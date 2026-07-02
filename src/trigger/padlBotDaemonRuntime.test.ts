@@ -7,6 +7,7 @@ import {
   parseSupervisorEnv,
   planSupervisorActions,
 } from "./padlBotDaemonRuntime";
+import { DAEMON_TASK_CONFIG, ENSURE_DAEMON_CRON } from "./padlBotDaemon";
 
 const now = new Date("2026-07-02T12:00:00.000Z");
 
@@ -254,5 +255,22 @@ describe("createDaemonTriggerRequest", () => {
 
   it("pins daemon retry policy to one attempt", () => {
     expect(DAEMON_RETRY_MAX_ATTEMPTS).toBe(1);
+  });
+});
+
+describe("Trigger task contract", () => {
+  it("sets daemon maxDuration above planned rotation and retry to one attempt", () => {
+    expect(DAEMON_TASK_CONFIG.id).toBe("padl-bot-daemon");
+    expect(DAEMON_TASK_CONFIG.queue).toEqual({ name: "padl-bot-daemon", concurrencyLimit: 1 });
+    expect(DAEMON_TASK_CONFIG.retry).toEqual({ maxAttempts: 1 });
+    expect(DAEMON_TASK_CONFIG.maxDuration).toBe(86400);
+  });
+
+  it("uses declarative schedules.task cron contract", () => {
+    expect(ENSURE_DAEMON_CRON).toEqual({
+      pattern: "* * * * *",
+      timezone: "Europe/Moscow",
+      environments: ["PRODUCTION"],
+    });
   });
 });
