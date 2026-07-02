@@ -41,6 +41,47 @@ Copy-Item .env.example .env
 python -m padlbot
 ```
 
+## Демон В Trigger.dev Production
+
+Облачный режим запускает бота как демон долгого опроса в Trigger.dev без Supabase и без публичного Telegram webhook.
+
+Переменные окружения для Production:
+
+```text
+TELEGRAM_BOT_TOKEN=...
+TRIGGER_SECRET_KEY=...
+PADL_DAEMON_ENABLED=1
+ADMIN_CHAT_ID=...
+AUTO_START_SEARCH=1
+PADL_DEFAULT_VENUE_IDS=12,14,15
+PADL_SITE_BASE_URL=https://api.outdoor.sport.mos.ru
+REQUEST_TIMEOUT_SECONDS=15
+PADL_RUNTIME_MODE=trigger-daemon
+PADL_DISABLE_SMS_WEBHOOK=1
+PADL_DELETE_WEBHOOK_ON_START=1
+PADL_DROP_PENDING_UPDATES_ON_START=0
+```
+
+Деплой:
+
+```powershell
+npm run trigger:dry-run
+npm run trigger:deploy
+```
+
+После deploy запланированная task `padl-bot-ensure-daemon` раз в минуту проверяет активные runs `padl-bot-daemon`. Если демон отсутствует, завершился или heartbeat устарел после порога отмены, ensure-run запускает новый демон. Если metadata недоступна, ensure-run не запускает второй процесс polling в этот тик.
+
+SQLite в Trigger Cloud считается состоянием best-effort. Если filesystem пережил restart, бот использует сохраненные preferences, search state, notified slots и Telegram offset. Если filesystem потерян, автоматически восстанавливается только мониторинг для `ADMIN_CHAT_ID` с `PADL_DEFAULT_VENUE_IDS`.
+
+Аварийная остановка:
+
+```text
+PADL_DAEMON_ENABLED=0
+PADL_DAEMON_STOP_WHEN_DISABLED=1
+```
+
+Не держите локальный `python -m padlbot` одновременно с Trigger daemon: два long polling процесса конфликтуют с Telegram `getUpdates`.
+
 ## Команды В Telegram
 
 - `/start` - показать подсказку по настройке.

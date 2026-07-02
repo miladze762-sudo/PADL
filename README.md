@@ -32,6 +32,19 @@ Run:
 python -m padlbot
 ```
 
+## Демон В Trigger.dev Production
+
+Production может работать как демон долгого опроса в Trigger.dev без Supabase и без публичного Telegram webhook. Деплой:
+
+```powershell
+npm run trigger:dry-run
+npm run trigger:deploy
+```
+
+Запланированная task `padl-bot-ensure-daemon` раз в минуту проверяет активные runs `padl-bot-daemon` и запускает новый демон, если healthy run отсутствует. SQLite state в Trigger Cloud является best-effort: preferences, notified slots и Telegram offset сохраняются только если сохранился filesystem run. При пустом filesystem восстанавливается только admin monitoring из `ADMIN_CHAT_ID`, `AUTO_START_SEARCH=1` и `PADL_DEFAULT_VENUE_IDS`.
+
+Для аварийной остановки установить `PADL_DAEMON_ENABLED=0` и `PADL_DAEMON_STOP_WHEN_DISABLED=1`. Не запускать локальный `python -m padlbot`, пока Trigger daemon выполняет Telegram polling.
+
 ## Telegram Commands
 
 - `/start` - show setup help.
