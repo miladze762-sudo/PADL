@@ -135,5 +135,39 @@ class TriggerDaemonStartupTests(unittest.IsolatedAsyncioTestCase):
         sms.assert_not_called()
 
 
+class LocalMainSmsGuardTests(unittest.IsolatedAsyncioTestCase):
+    async def test_disable_sms_webhook_skips_local_webhook_start(self):
+        from padlbot.__main__ import main as local_main
+
+        config = Config(
+            telegram_bot_token="token",
+            sms_forward_secret="",
+            disable_sms_webhook=True,
+            auto_start_search=False,
+        )
+
+        class StopPolling(Exception):
+            pass
+
+        with patch("padlbot.__main__.Storage") as storage_cls, patch(
+            "padlbot.__main__.OutdoorApiClient"
+        ) as api_cls, patch("padlbot.__main__.TelegramBot") as bot_cls, patch(
+            "padlbot.__main__.SearchManager"
+        ) as manager_cls, patch("padlbot.__main__.start_sms_webhook", new=AsyncMock()) as sms, patch(
+            "padlbot.__main__.polling_loop", new=AsyncMock(side_effect=StopPolling)
+        ):
+            storage_cls.return_value.list_active_search_chat_ids.return_value = []
+            api_cls.return_value.__aenter__.return_value = object()
+            api_cls.return_value.__aexit__.return_value = None
+            bot_cls.return_value.__aenter__.return_value = object()
+            bot_cls.return_value.__aexit__.return_value = None
+            manager_cls.return_value.resume_active_searches.return_value = []
+
+            with self.assertRaises(StopPolling):
+                await local_main(config)
+
+        sms.assert_not_called()
+
+
 if __name__ == "__main__":
     unittest.main()

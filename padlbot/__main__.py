@@ -24,7 +24,9 @@ async def main(config: Config) -> None:
             resumed_chat_ids = set(
                 manager.resume_active_searches(storage.list_active_search_chat_ids())
             )
-            webhook_runner = await start_sms_webhook(manager, config)
+            webhook_runner = None
+            if not config.disable_sms_webhook and config.runtime_mode != "trigger-daemon":
+                webhook_runner = await start_sms_webhook(manager, config)
             if (
                 config.auto_start_search
                 and config.admin_chat_id is not None
@@ -36,7 +38,8 @@ async def main(config: Config) -> None:
             try:
                 await polling_loop(bot=bot, manager=manager, storage=storage)
             finally:
-                await webhook_runner.cleanup()
+                if webhook_runner is not None:
+                    await webhook_runner.cleanup()
 
 
 if __name__ == "__main__":
