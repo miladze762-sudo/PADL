@@ -23,8 +23,8 @@ export const DAEMON_TASK_CONFIG = {
 export const ENSURE_DAEMON_CRON = {
   pattern: "* * * * *",
   timezone: "Europe/Moscow",
-  environments: ["PRODUCTION"],
-} as const;
+  environments: ["PRODUCTION"] as ("PRODUCTION")[],
+};
 
 export const padlBotDaemon = task({
   ...DAEMON_TASK_CONFIG,
@@ -84,7 +84,7 @@ export const ensureDaemon = schedules.task({
       await padlBotDaemon.trigger(request.payload, request.options);
     }
 
-    logger.log("PADL daemon supervisor summary", plan);
+    logger.log("PADL daemon supervisor summary", { plan });
     return plan;
   },
 });
